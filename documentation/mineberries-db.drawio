@@ -211,7 +211,7 @@
     </mxGraphModel>
   </diagram>
   <diagram id="page3" name="3. Модуль обработки доставок">
-    <mxGraphModel dx="540" dy="396" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
+    <mxGraphModel dx="1665" dy="836" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -368,7 +368,7 @@
         <mxCell id="p3_cargo_incident_a2" parent="p3_cargo_incident" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;overflow=hidden;whiteSpace=nowrap;fontStyle=2;fontSize=11;" value="FK task_id BIGINT" vertex="1">
           <mxGeometry height="22" width="290" y="74" as="geometry" />
         </mxCell>
-        <mxCell id="p3_cargo_incident_a3" parent="p3_cargo_incident" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;overflow=hidden;whiteSpace=nowrap;fontStyle=2;fontSize=11;" value="FK game_event_id BIGINT NULL" vertex="1">
+        <mxCell id="p3_cargo_incident_a3" parent="p3_cargo_incident" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;overflow=hidden;whiteSpace=nowrap;fontStyle=2;fontSize=11;" value="FK game_event_id UUID NULL" vertex="1">
           <mxGeometry height="22" width="290" y="96" as="geometry" />
         </mxCell>
         <mxCell id="p3_cargo_incident_a4" parent="p3_cargo_incident" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;overflow=hidden;whiteSpace=nowrap;fontStyle=0;fontSize=11;" value="type VARCHAR(30)" vertex="1">
@@ -620,7 +620,7 @@
     </mxGraphModel>
   </diagram>
   <diagram id="page5" name="5. Модуль обработки склада">
-    <mxGraphModel grid="1" page="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
+    <mxGraphModel dx="2648" dy="499" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -762,7 +762,7 @@
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="Plx4zp5r8nRay1xSHZ70-5" parent="1" style="swimlane;fontStyle=1;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="warehouse" vertex="1">
-          <mxGeometry height="140" width="290" x="400" y="350" as="geometry" />
+          <mxGeometry height="118" width="290" x="400" y="350" as="geometry" />
         </mxCell>
         <mxCell id="Plx4zp5r8nRay1xSHZ70-6" parent="Plx4zp5r8nRay1xSHZ70-5" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;overflow=hidden;whiteSpace=nowrap;fontStyle=1;fontSize=11;fontColor=#000000;" value="PK warehouse_id BIGINT" vertex="1">
           <mxGeometry height="22" width="290" y="30" as="geometry" />
@@ -773,11 +773,8 @@
         <mxCell id="Plx4zp5r8nRay1xSHZ70-8" parent="Plx4zp5r8nRay1xSHZ70-5" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;overflow=hidden;whiteSpace=nowrap;fontStyle=2;fontSize=11;" value="FK point_id BIGINT" vertex="1">
           <mxGeometry height="22" width="290" y="74" as="geometry" />
         </mxCell>
-        <mxCell id="Plx4zp5r8nRay1xSHZ70-9" parent="Plx4zp5r8nRay1xSHZ70-5" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;overflow=hidden;whiteSpace=nowrap;fontStyle=0;fontSize=11;" value="capacity INT" vertex="1">
-          <mxGeometry height="22" width="290" y="96" as="geometry" />
-        </mxCell>
         <mxCell id="Plx4zp5r8nRay1xSHZ70-10" parent="Plx4zp5r8nRay1xSHZ70-5" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;overflow=hidden;whiteSpace=nowrap;fontStyle=0;fontSize=11;" value="is_active BOOLEAN" vertex="1">
-          <mxGeometry height="22" width="290" y="118" as="geometry" />
+          <mxGeometry height="22" width="290" y="96" as="geometry" />
         </mxCell>
         <mxCell id="Plx4zp5r8nRay1xSHZ70-15" parent="1" style="swimlane;fontStyle=1;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="item" vertex="1">
           <mxGeometry height="206" width="290" x="1290" y="360" as="geometry" />
