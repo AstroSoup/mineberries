@@ -1,6 +1,6 @@
 <mxfile host="app.diagrams.net" pages="7">
   <diagram id="page1" name="1. Модуль управления пользователями">
-    <mxGraphModel grid="1" page="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
+    <mxGraphModel dx="1591" dy="799" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -834,7 +834,7 @@
     </mxGraphModel>
   </diagram>
   <diagram id="page6" name="6. Модуль управления ботами">
-    <mxGraphModel dx="935" dy="685" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
+    <mxGraphModel dx="1432" dy="719" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -889,37 +889,10 @@
         <mxCell id="p6_courier_position_a6" parent="p6_courier_position" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;overflow=hidden;whiteSpace=nowrap;fontStyle=0;fontSize=11;" value="recorded_at TIMESTAMP" vertex="1">
           <mxGeometry height="22" width="290" y="162" as="geometry" />
         </mxCell>
-        <mxCell id="p6_game_event" parent="1" style="swimlane;fontStyle=1;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="game_event" vertex="1">
-          <mxGeometry height="184" width="290" x="30" y="284" as="geometry" />
-        </mxCell>
-        <mxCell id="p6_game_event_a0" parent="p6_game_event" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;overflow=hidden;whiteSpace=nowrap;fontStyle=1;fontSize=11;fontColor=#000000;" value="PK event_id UUID" vertex="1">
-          <mxGeometry height="22" width="290" y="30" as="geometry" />
-        </mxCell>
-        <mxCell id="p6_game_event_a2" parent="p6_game_event" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;overflow=hidden;whiteSpace=nowrap;fontStyle=2;fontSize=11;" value="FK courier_id BIGINT NULL" vertex="1">
-          <mxGeometry height="22" width="290" y="52" as="geometry" />
-        </mxCell>
-        <mxCell id="p6_game_event_a3" parent="p6_game_event" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;overflow=hidden;whiteSpace=nowrap;fontStyle=0;fontSize=11;" value="type VARCHAR(30)" vertex="1">
-          <mxGeometry height="22" width="290" y="74" as="geometry" />
-        </mxCell>
-        <mxCell id="p6_game_event_a4" parent="p6_game_event" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;overflow=hidden;whiteSpace=nowrap;fontStyle=0;fontSize=11;" value="payload TEXT" vertex="1">
-          <mxGeometry height="22" width="290" y="96" as="geometry" />
-        </mxCell>
-        <mxCell id="p6_game_event_a5" parent="p6_game_event" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;overflow=hidden;whiteSpace=nowrap;fontStyle=0;fontSize=11;" value="status VARCHAR(20)" vertex="1">
-          <mxGeometry height="22" width="290" y="118" as="geometry" />
-        </mxCell>
-        <mxCell id="p6_game_event_a6" parent="p6_game_event" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;overflow=hidden;whiteSpace=nowrap;fontStyle=0;fontSize=11;" value="received_at TIMESTAMP" vertex="1">
-          <mxGeometry height="22" width="290" y="140" as="geometry" />
-        </mxCell>
-        <mxCell id="p6_game_event_a7" parent="p6_game_event" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;overflow=hidden;whiteSpace=nowrap;fontStyle=0;fontSize=11;" value="processed_at TIMESTAMP" vertex="1">
-          <mxGeometry height="22" width="290" y="162" as="geometry" />
-        </mxCell>
         <mxCell id="p6_e0" edge="1" parent="1" source="p6_user" style="edgeStyle=entityRelationEdgeStyle;html=1;fontSize=10;rounded=0;startArrow=ERmandOne;endArrow=ERzeroToMany;startFill=0;endFill=0;strokeColor=#555555;" target="p6_courier" value="добавил">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="p6_e1" edge="1" parent="1" source="p6_courier" style="edgeStyle=entityRelationEdgeStyle;html=1;fontSize=10;rounded=0;startArrow=ERmandOne;endArrow=ERzeroToMany;startFill=0;endFill=0;strokeColor=#555555;" target="p6_courier_position" value="позиции">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="p6_e2" edge="1" parent="1" source="p6_courier" style="edgeStyle=entityRelationEdgeStyle;html=1;fontSize=10;rounded=0;startArrow=ERzeroToOne;endArrow=ERzeroToMany;startFill=0;endFill=0;strokeColor=#555555;" target="p6_game_event" value="события">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
       </root>
