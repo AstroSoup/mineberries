@@ -1,0 +1,15 @@
+# Корневой changelog проекта mineberries.
+# Требуется PostgreSQL 13+ (gen_random_uuid(), sha256(), процедуры, INCLUDE-индексы).
+databaseChangeLog:
+  - include:
+      file: changes/01-schema.sql
+      relativeToChangelogFile: true
+  - include:
+      file: changes/02-test-data.sql        # контекст "test" — на prod не выполняется
+      relativeToChangelogFile: true
+  - include:
+      file: changes/03-routines.sql
+      relativeToChangelogFile: true
+  - include:
+      file: changes/04-indexes.sql
+      relativeToChangelogFile: true
