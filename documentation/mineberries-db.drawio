@@ -1,29 +1,32 @@
 <mxfile host="Electron" pages="7">
   <diagram id="page1" name="1. Модуль управления пользователями">
-    <mxGraphModel dx="1562" dy="942" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
+    <mxGraphModel dx="1562" dy="973" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
         <mxCell id="p1_user" parent="1" style="swimlane;fontStyle=1;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="app_user" vertex="1">
-          <mxGeometry height="162" width="290" x="30" y="30" as="geometry" />
+          <mxGeometry height="184" width="290" x="30" y="30" as="geometry" />
         </mxCell>
         <mxCell id="p1_user_a0" parent="p1_user" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;overflow=hidden;whiteSpace=nowrap;fontStyle=1;fontSize=11;fontColor=#000000;" value="PK user_id BIGINT" vertex="1">
           <mxGeometry height="22" width="290" y="30" as="geometry" />
         </mxCell>
-        <mxCell id="p1_user_a2" parent="p1_user" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;overflow=hidden;whiteSpace=nowrap;fontStyle=0;fontSize=11;" value="nickname VARCHAR(16)" vertex="1">
+        <mxCell id="p1_user_a2" parent="p1_user" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;overflow=hidden;whiteSpace=nowrap;fontStyle=0;fontSize=11;" value="nickname VARCHAR(16) NOT NULL" vertex="1">
           <mxGeometry height="22" width="290" y="52" as="geometry" />
         </mxCell>
-        <mxCell id="p1_user_a3" parent="p1_user" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;overflow=hidden;whiteSpace=nowrap;fontStyle=0;fontSize=11;" value="status VARCHAR(20)" vertex="1">
+        <mxCell id="TjEgawd3AkscU7dOSr7--1" parent="p1_user" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;overflow=hidden;whiteSpace=nowrap;fontStyle=0;fontSize=11;" value="password_hash VARCHAR(64) NOT NULL" vertex="1">
           <mxGeometry height="22" width="290" y="74" as="geometry" />
         </mxCell>
-        <mxCell id="p1_user_a4" parent="p1_user" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;overflow=hidden;whiteSpace=nowrap;fontStyle=0;fontSize=11;" value="avatar_key VARCHAR(255)" vertex="1">
+        <mxCell id="p1_user_a3" parent="p1_user" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;overflow=hidden;whiteSpace=nowrap;fontStyle=0;fontSize=11;" value="status VARCHAR(20)" vertex="1">
           <mxGeometry height="22" width="290" y="96" as="geometry" />
         </mxCell>
-        <mxCell id="p1_user_a5" parent="p1_user" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;overflow=hidden;whiteSpace=nowrap;fontStyle=0;fontSize=11;" value="created_at TIMESTAMP" vertex="1">
+        <mxCell id="p1_user_a4" parent="p1_user" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;overflow=hidden;whiteSpace=nowrap;fontStyle=0;fontSize=11;" value="avatar_key VARCHAR(255)" vertex="1">
           <mxGeometry height="22" width="290" y="118" as="geometry" />
         </mxCell>
-        <mxCell id="p1_user_a6" parent="p1_user" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;overflow=hidden;whiteSpace=nowrap;fontStyle=0;fontSize=11;" value="deleted_at TIMESTAMP" vertex="1">
+        <mxCell id="p1_user_a5" parent="p1_user" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;overflow=hidden;whiteSpace=nowrap;fontStyle=0;fontSize=11;" value="created_at TIMESTAMP" vertex="1">
           <mxGeometry height="22" width="290" y="140" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_user_a6" parent="p1_user" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;overflow=hidden;whiteSpace=nowrap;fontStyle=0;fontSize=11;" value="deleted_at TIMESTAMP" vertex="1">
+          <mxGeometry height="22" width="290" y="162" as="geometry" />
         </mxCell>
         <mxCell id="p1_user_role" parent="1" style="swimlane;fontStyle=1;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="user_role" vertex="1">
           <mxGeometry height="118" width="290" x="450" y="30" as="geometry" />
@@ -211,7 +214,7 @@
     </mxGraphModel>
   </diagram>
   <diagram id="page3" name="3. Модуль обработки доставок">
-    <mxGraphModel dx="686" dy="414" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
+    <mxGraphModel dx="477" dy="287" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -843,7 +846,7 @@
     </mxGraphModel>
   </diagram>
   <diagram id="page6" name="6. Модуль управления ботами">
-    <mxGraphModel dx="1406" dy="848" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
+    <mxGraphModel dx="1406" dy="876" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -854,7 +857,7 @@
           <mxGeometry height="22" width="290" y="30" as="geometry" />
         </mxCell>
         <mxCell id="p6_courier" parent="1" style="swimlane;fontStyle=1;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="courier" vertex="1">
-          <mxGeometry height="162" width="290" x="450" y="30" as="geometry" />
+          <mxGeometry height="184" width="290" x="450" y="30" as="geometry" />
         </mxCell>
         <mxCell id="p6_courier_a0" parent="p6_courier" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;overflow=hidden;whiteSpace=nowrap;fontStyle=1;fontSize=11;fontColor=#000000;" value="PK courier_id BIGINT" vertex="1">
           <mxGeometry height="22" width="290" y="30" as="geometry" />
@@ -862,17 +865,20 @@
         <mxCell id="p6_courier_a1" parent="p6_courier" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;overflow=hidden;whiteSpace=nowrap;fontStyle=0;fontSize=11;" value="mc_nickname VARCHAR(16) UNIQUE" vertex="1">
           <mxGeometry height="22" width="290" y="52" as="geometry" />
         </mxCell>
-        <mxCell id="p6_courier_a2" parent="p6_courier" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;overflow=hidden;whiteSpace=nowrap;fontStyle=0;fontSize=11;" value="status VARCHAR(20)" vertex="1">
+        <mxCell id="S7h1PP-DgDM62_NT5u_r-1" parent="p6_courier" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;overflow=hidden;whiteSpace=nowrap;fontStyle=0;fontSize=11;" value="password VARCHAR(64) NOT NULL" vertex="1">
           <mxGeometry height="22" width="290" y="74" as="geometry" />
         </mxCell>
-        <mxCell id="p6_courier_a3" parent="p6_courier" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;overflow=hidden;whiteSpace=nowrap;fontStyle=2;fontSize=11;" value="FK created_by BIGINT" vertex="1">
+        <mxCell id="p6_courier_a2" parent="p6_courier" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;overflow=hidden;whiteSpace=nowrap;fontStyle=0;fontSize=11;" value="status VARCHAR(20)" vertex="1">
           <mxGeometry height="22" width="290" y="96" as="geometry" />
         </mxCell>
-        <mxCell id="p6_courier_a4" parent="p6_courier" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;overflow=hidden;whiteSpace=nowrap;fontStyle=0;fontSize=11;" value="is_active BOOLEAN" vertex="1">
+        <mxCell id="p6_courier_a3" parent="p6_courier" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;overflow=hidden;whiteSpace=nowrap;fontStyle=2;fontSize=11;" value="FK created_by BIGINT" vertex="1">
           <mxGeometry height="22" width="290" y="118" as="geometry" />
         </mxCell>
-        <mxCell id="p6_courier_a5" parent="p6_courier" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;overflow=hidden;whiteSpace=nowrap;fontStyle=0;fontSize=11;" value="created_at TIMESTAMP" vertex="1">
+        <mxCell id="p6_courier_a4" parent="p6_courier" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;overflow=hidden;whiteSpace=nowrap;fontStyle=0;fontSize=11;" value="is_active BOOLEAN" vertex="1">
           <mxGeometry height="22" width="290" y="140" as="geometry" />
+        </mxCell>
+        <mxCell id="p6_courier_a5" parent="p6_courier" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;overflow=hidden;whiteSpace=nowrap;fontStyle=0;fontSize=11;" value="created_at TIMESTAMP" vertex="1">
+          <mxGeometry height="22" width="290" y="162" as="geometry" />
         </mxCell>
         <mxCell id="p6_courier_position" parent="1" style="swimlane;fontStyle=1;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="courier_position" vertex="1">
           <mxGeometry height="184" width="290" x="870" y="30" as="geometry" />
