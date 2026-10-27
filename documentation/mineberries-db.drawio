@@ -1,10 +1,10 @@
-<mxfile host="app.diagrams.net" pages="7">
+<mxfile host="Electron" pages="7">
   <diagram id="page1" name="1. Модуль управления пользователями">
-    <mxGraphModel grid="1" page="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
+    <mxGraphModel dx="1562" dy="942" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
-        <mxCell id="p1_user" parent="1" style="swimlane;fontStyle=1;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="user" vertex="1">
+        <mxCell id="p1_user" parent="1" style="swimlane;fontStyle=1;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="app_user" vertex="1">
           <mxGeometry height="162" width="290" x="30" y="30" as="geometry" />
         </mxCell>
         <mxCell id="p1_user_a0" parent="p1_user" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;overflow=hidden;whiteSpace=nowrap;fontStyle=1;fontSize=11;fontColor=#000000;" value="PK user_id BIGINT" vertex="1">
@@ -211,7 +211,7 @@
     </mxGraphModel>
   </diagram>
   <diagram id="page3" name="3. Модуль обработки доставок">
-    <mxGraphModel dx="540" dy="396" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
+    <mxGraphModel dx="686" dy="414" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -239,10 +239,10 @@
         <mxCell id="p3_delivery_order_a4" parent="p3_delivery_order" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;overflow=hidden;whiteSpace=nowrap;fontStyle=2;fontSize=11;" value="FK seller_id BIGINT NULL" vertex="1">
           <mxGeometry height="22" width="290" y="118" as="geometry" />
         </mxCell>
-        <mxCell id="p3_delivery_order_a5" parent="p3_delivery_order" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;overflow=hidden;whiteSpace=nowrap;fontStyle=2;fontSize=11;" value="FK pickup_point_id BIGINT NULL" vertex="1">
+        <mxCell id="p3_delivery_order_a5" parent="p3_delivery_order" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;overflow=hidden;whiteSpace=nowrap;fontStyle=2;fontSize=11;" value="FK pickup_point_id BIGINT NOT NULL" vertex="1">
           <mxGeometry height="22" width="290" y="140" as="geometry" />
         </mxCell>
-        <mxCell id="p3_delivery_order_a6" parent="p3_delivery_order" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;overflow=hidden;whiteSpace=nowrap;fontStyle=2;fontSize=11;" value="FK dropoff_point_id BIGINT NULL" vertex="1">
+        <mxCell id="p3_delivery_order_a6" parent="p3_delivery_order" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;overflow=hidden;whiteSpace=nowrap;fontStyle=2;fontSize=11;" value="FK dropoff_point_id BIGINT NOT NULL" vertex="1">
           <mxGeometry height="22" width="290" y="162" as="geometry" />
         </mxCell>
         <mxCell id="p3_delivery_order_a7" parent="p3_delivery_order" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;overflow=hidden;whiteSpace=nowrap;fontStyle=0;fontSize=11;" value="total_price DECIMAL(12,2)" vertex="1">
@@ -368,7 +368,7 @@
         <mxCell id="p3_cargo_incident_a2" parent="p3_cargo_incident" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;overflow=hidden;whiteSpace=nowrap;fontStyle=2;fontSize=11;" value="FK task_id BIGINT" vertex="1">
           <mxGeometry height="22" width="290" y="74" as="geometry" />
         </mxCell>
-        <mxCell id="p3_cargo_incident_a3" parent="p3_cargo_incident" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;overflow=hidden;whiteSpace=nowrap;fontStyle=2;fontSize=11;" value="FK game_event_id BIGINT NULL" vertex="1">
+        <mxCell id="p3_cargo_incident_a3" parent="p3_cargo_incident" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;overflow=hidden;whiteSpace=nowrap;fontStyle=2;fontSize=11;" value="FK game_event_id UUID NULL" vertex="1">
           <mxGeometry height="22" width="290" y="96" as="geometry" />
         </mxCell>
         <mxCell id="p3_cargo_incident_a4" parent="p3_cargo_incident" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;overflow=hidden;whiteSpace=nowrap;fontStyle=0;fontSize=11;" value="type VARCHAR(30)" vertex="1">
@@ -386,7 +386,7 @@
         <mxCell id="p3_game_event" parent="1" style="swimlane;fontStyle=3;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;fillColor=#f5f5f5;strokeColor=#999999;fontColor=#666666;dashed=1;" value="game_event (модуль ботов)" vertex="1">
           <mxGeometry height="52" width="290" x="1370" y="626" as="geometry" />
         </mxCell>
-        <mxCell id="p3_game_event_a0" parent="p3_game_event" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;overflow=hidden;whiteSpace=nowrap;fontStyle=1;fontSize=11;fontColor=#000000;" value="PK event_id BIGINT" vertex="1">
+        <mxCell id="p3_game_event_a0" parent="p3_game_event" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;overflow=hidden;whiteSpace=nowrap;fontStyle=1;fontSize=11;fontColor=#000000;" value="PK event_id UUID" vertex="1">
           <mxGeometry height="22" width="290" y="30" as="geometry" />
         </mxCell>
         <mxCell id="p3_e0" edge="1" parent="1" source="p3_user" style="edgeStyle=entityRelationEdgeStyle;html=1;fontSize=10;rounded=0;startArrow=ERmandOne;endArrow=ERzeroToMany;startFill=0;endFill=0;strokeColor=#555555;" target="p3_delivery_order" value="заказчик">
@@ -395,28 +395,28 @@
         <mxCell id="p3_e1" edge="1" parent="1" source="p3_user" style="edgeStyle=entityRelationEdgeStyle;html=1;fontSize=10;rounded=0;startArrow=ERzeroToOne;endArrow=ERzeroToMany;startFill=0;endFill=0;strokeColor=#555555;" target="p3_delivery_order" value="продавец">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="p3_e2" edge="1" parent="1" source="p3_point" style="edgeStyle=entityRelationEdgeStyle;html=1;fontSize=10;rounded=0;startArrow=ERzeroToOne;endArrow=ERzeroToMany;startFill=0;endFill=0;strokeColor=#555555;" target="p3_delivery_order" value="точка забора">
+        <mxCell id="p3_e2" edge="1" parent="1" source="p3_point" style="edgeStyle=entityRelationEdgeStyle;html=1;fontSize=10;rounded=0;startArrow=ERmandOne;endArrow=ERzeroToMany;startFill=0;endFill=0;strokeColor=#555555;" target="p3_delivery_order" value="точка забора">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="p3_e3" edge="1" parent="1" source="p3_point" style="edgeStyle=entityRelationEdgeStyle;html=1;fontSize=10;rounded=0;startArrow=ERzeroToOne;endArrow=ERzeroToMany;startFill=0;endFill=0;strokeColor=#555555;" target="p3_delivery_order" value="точка доставки">
+        <mxCell id="p3_e3" edge="1" parent="1" source="p3_point_a4" style="edgeStyle=entityRelationEdgeStyle;html=1;fontSize=10;rounded=0;startArrow=ERmandOne;endArrow=ERzeroToMany;startFill=0;endFill=0;strokeColor=#555555;exitX=0;exitY=0.25;exitDx=0;exitDy=0;" target="p3_delivery_order" value="точка доставки">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="p3_e4" edge="1" parent="1" source="p3_delivery_order" style="edgeStyle=entityRelationEdgeStyle;html=1;fontSize=10;rounded=0;startArrow=ERmandOne;endArrow=ERoneToMany;startFill=0;endFill=0;strokeColor=#555555;" target="p3_order_item" value="состав">
+        <mxCell id="p3_e4" edge="1" parent="1" source="p3_delivery_order_a6" style="edgeStyle=entityRelationEdgeStyle;html=1;fontSize=10;rounded=0;startArrow=ERmandOne;endArrow=ERoneToMany;startFill=0;endFill=0;strokeColor=#555555;exitX=1;exitY=1;exitDx=0;exitDy=0;" target="p3_order_item" value="состав">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="p3_e5" edge="1" parent="1" source="p3_item" style="edgeStyle=entityRelationEdgeStyle;html=1;fontSize=10;rounded=0;startArrow=ERmandOne;endArrow=ERzeroToMany;startFill=0;endFill=0;strokeColor=#555555;" target="p3_order_item" value="товар">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="p3_e6" edge="1" parent="1" source="p3_delivery_order" style="edgeStyle=entityRelationEdgeStyle;html=1;fontSize=10;rounded=0;startArrow=ERmandOne;endArrow=ERoneToMany;startFill=0;endFill=0;strokeColor=#555555;" target="p3_order_status_history" value="история">
+        <mxCell id="p3_e6" edge="1" parent="1" source="p3_delivery_order_a7" style="edgeStyle=entityRelationEdgeStyle;html=1;fontSize=10;rounded=0;startArrow=ERmandOne;endArrow=ERoneToMany;startFill=0;endFill=0;strokeColor=#555555;exitX=0;exitY=0.25;exitDx=0;exitDy=0;" target="p3_order_status_history" value="история">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="p3_e7" edge="1" parent="1" source="p3_delivery_order" style="edgeStyle=entityRelationEdgeStyle;html=1;fontSize=10;rounded=0;startArrow=ERmandOne;endArrow=ERzeroToMany;startFill=0;endFill=0;strokeColor=#555555;" target="p3_courier_task" value="задания">
+        <mxCell id="p3_e7" edge="1" parent="1" source="p3_delivery_order_a6" style="edgeStyle=entityRelationEdgeStyle;html=1;fontSize=10;rounded=0;startArrow=ERmandOne;endArrow=ERzeroToMany;startFill=0;endFill=0;strokeColor=#555555;exitX=1;exitY=1;exitDx=0;exitDy=0;" target="p3_courier_task" value="задания">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="p3_e8" edge="1" parent="1" source="p3_courier" style="edgeStyle=entityRelationEdgeStyle;html=1;fontSize=10;rounded=0;startArrow=ERmandOne;endArrow=ERzeroToMany;startFill=0;endFill=0;strokeColor=#555555;" target="p3_courier_task" value="выполняет">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="p3_e9" edge="1" parent="1" source="p3_delivery_order" style="edgeStyle=entityRelationEdgeStyle;html=1;fontSize=10;rounded=0;startArrow=ERmandOne;endArrow=ERzeroToMany;startFill=0;endFill=0;strokeColor=#555555;" target="p3_cargo_incident" value="инциденты">
+        <mxCell id="p3_e9" edge="1" parent="1" source="p3_delivery_order_a6" style="edgeStyle=entityRelationEdgeStyle;html=1;fontSize=10;rounded=0;startArrow=ERmandOne;endArrow=ERzeroToMany;startFill=0;endFill=0;strokeColor=#555555;exitX=1;exitY=1;exitDx=0;exitDy=0;" target="p3_cargo_incident" value="инциденты">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="p3_e10" edge="1" parent="1" source="p3_courier_task" style="edgeStyle=entityRelationEdgeStyle;html=1;fontSize=10;rounded=0;startArrow=ERmandOne;endArrow=ERzeroToMany;startFill=0;endFill=0;strokeColor=#555555;" target="p3_cargo_incident" value="в рамках">
@@ -429,7 +429,7 @@
     </mxGraphModel>
   </diagram>
   <diagram id="page4" name="4. Модуль обработки платежей">
-    <mxGraphModel grid="1" page="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
+    <mxGraphModel dx="3412" dy="1060" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -452,7 +452,7 @@
           <mxGeometry height="22" width="290" y="30" as="geometry" />
         </mxCell>
         <mxCell id="T_puRZG-s0quznbIU0P9-7" parent="1" style="swimlane;fontStyle=3;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;fillColor=#f5f5f5;strokeColor=#999999;fontColor=#666666;dashed=1;" value="dispute (модуль модерации)" vertex="1">
-          <mxGeometry height="52" width="290" x="70" y="1455" as="geometry" />
+          <mxGeometry height="52" width="290" x="60" y="1580" as="geometry" />
         </mxCell>
         <mxCell id="T_puRZG-s0quznbIU0P9-8" parent="T_puRZG-s0quznbIU0P9-7" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;overflow=hidden;whiteSpace=nowrap;fontStyle=1;fontSize=11;fontColor=#000000;" value="PK dispute_id BIGINT" vertex="1">
           <mxGeometry height="22" width="290" y="30" as="geometry" />
@@ -616,16 +616,22 @@
         <mxCell id="T_puRZG-s0quznbIU0P9-61" edge="1" parent="1" source="T_puRZG-s0quznbIU0P9-38" style="edgeStyle=entityRelationEdgeStyle;html=1;fontSize=10;rounded=0;startArrow=ERmandOne;endArrow=ERoneToMany;startFill=0;endFill=0;strokeColor=#555555;" target="T_puRZG-s0quznbIU0P9-46" value="журнал компенсации">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
+        <mxCell id="dzW7QwcjtiZPWV3gw2v2-1" edge="1" parent="1" source="T_puRZG-s0quznbIU0P9-2" style="edgeStyle=entityRelationEdgeStyle;html=1;fontSize=10;rounded=0;startArrow=ERmandOne;endArrow=ERzeroToMany;startFill=0;endFill=0;strokeColor=#555555;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=1;entryDx=0;entryDy=0;" target="T_puRZG-s0quznbIU0P9-43" value="админ">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="170" y="1450" as="sourcePoint" />
+            <mxPoint x="580" y="1886" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
       </root>
     </mxGraphModel>
   </diagram>
   <diagram id="page5" name="5. Модуль обработки склада">
-    <mxGraphModel grid="1" page="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
+    <mxGraphModel dx="2561" dy="547" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
         <mxCell id="p5_point" parent="1" style="swimlane;fontStyle=3;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;fillColor=#f5f5f5;strokeColor=#999999;fontColor=#666666;dashed=1;" value="point (модуль доставок)" vertex="1">
-          <mxGeometry height="52" width="290" x="40" y="310" as="geometry" />
+          <mxGeometry height="52" width="290" x="30" y="320" as="geometry" />
         </mxCell>
         <mxCell id="p5_point_a0" parent="p5_point" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;overflow=hidden;whiteSpace=nowrap;fontStyle=1;fontSize=11;fontColor=#000000;" value="PK point_id BIGINT" vertex="1">
           <mxGeometry height="22" width="290" y="30" as="geometry" />
@@ -723,7 +729,7 @@
         <mxCell id="p5_inventory_discrepancy_a5" parent="p5_inventory_discrepancy" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;overflow=hidden;whiteSpace=nowrap;fontStyle=0;fontSize=11;" value="detected_at TIMESTAMP" vertex="1">
           <mxGeometry height="22" width="290" y="140" as="geometry" />
         </mxCell>
-        <mxCell id="p5_e0" edge="1" parent="1" source="p5_point" style="edgeStyle=entityRelationEdgeStyle;html=1;fontSize=10;rounded=0;startArrow=ERmandOne;endArrow=ERzeroToMany;startFill=0;endFill=0;strokeColor=#555555;" target="Plx4zp5r8nRay1xSHZ70-5" value="расположение">
+        <mxCell id="p5_e0" edge="1" parent="1" source="p5_point" style="edgeStyle=entityRelationEdgeStyle;html=1;fontSize=10;rounded=0;startArrow=ERmandOne;endArrow=ERzeroToOne;startFill=0;endFill=0;strokeColor=#555555;" target="Plx4zp5r8nRay1xSHZ70-5" value="расположение">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="440" y="410" as="targetPoint" />
           </mxGeometry>
@@ -750,7 +756,7 @@
         <mxCell id="p5_e8" edge="1" parent="1" source="p5_delivery_order" style="edgeStyle=entityRelationEdgeStyle;html=1;fontSize=10;rounded=0;startArrow=ERmandOne;endArrow=ERzeroToMany;startFill=0;endFill=0;strokeColor=#555555;" target="p5_seller_lot" value="заказ сдачи">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="p5_e9" edge="1" parent="1" source="Plx4zp5r8nRay1xSHZ70-5" style="edgeStyle=entityRelationEdgeStyle;html=1;fontSize=10;rounded=0;startArrow=ERmandOne;endArrow=ERzeroToMany;startFill=0;endFill=0;strokeColor=#555555;" target="p5_inventory_check" value="проверки">
+        <mxCell id="p5_e9" edge="1" parent="1" source="Plx4zp5r8nRay1xSHZ70-8" style="edgeStyle=entityRelationEdgeStyle;html=1;fontSize=10;rounded=0;startArrow=ERmandOne;endArrow=ERzeroToMany;startFill=0;endFill=0;strokeColor=#555555;exitX=0;exitY=0.75;exitDx=0;exitDy=0;" target="p5_inventory_check" value="проверки">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="440" y="410" as="sourcePoint" />
           </mxGeometry>
@@ -837,7 +843,7 @@
     </mxGraphModel>
   </diagram>
   <diagram id="page6" name="6. Модуль управления ботами">
-    <mxGraphModel dx="935" dy="685" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
+    <mxGraphModel dx="1406" dy="848" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -922,14 +928,14 @@
         <mxCell id="p6_e1" edge="1" parent="1" source="p6_courier" style="edgeStyle=entityRelationEdgeStyle;html=1;fontSize=10;rounded=0;startArrow=ERmandOne;endArrow=ERzeroToMany;startFill=0;endFill=0;strokeColor=#555555;" target="p6_courier_position" value="позиции">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="p6_e2" edge="1" parent="1" source="p6_courier" style="edgeStyle=entityRelationEdgeStyle;html=1;fontSize=10;rounded=0;startArrow=ERzeroToOne;endArrow=ERzeroToMany;startFill=0;endFill=0;strokeColor=#555555;" target="p6_game_event" value="события">
+        <mxCell id="p6_e2" edge="1" parent="1" source="p6_courier_a3" style="edgeStyle=entityRelationEdgeStyle;html=1;fontSize=10;rounded=0;startArrow=ERzeroToOne;endArrow=ERzeroToMany;startFill=0;endFill=0;strokeColor=#555555;exitX=0;exitY=0.75;exitDx=0;exitDy=0;" target="p6_game_event" value="события">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
   </diagram>
   <diagram id="page7" name="7. Модуль модерации и отчётов">
-    <mxGraphModel dx="4251" dy="1903" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
+    <mxGraphModel dx="4210" dy="1542" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
