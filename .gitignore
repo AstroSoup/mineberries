@@ -1,10 +1,15 @@
-*.bkp
 HELP.md
 .gradle
 build/
 !gradle/wrapper/gradle-wrapper.jar
 !**/src/main/**/build/
 !**/src/test/**/build/
+
+# node
+node_modules
+
+# drawio
+*.bkp
 
 ### STS ###
 .apt_generated
