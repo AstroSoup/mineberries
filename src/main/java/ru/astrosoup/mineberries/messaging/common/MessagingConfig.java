@@ -8,13 +8,16 @@ import org.springframework.context.annotation.Configuration;
 import ru.astrosoup.mineberries.messaging.common.brocker.EventSource;
 import ru.astrosoup.mineberries.messaging.common.brocker.MessageSender;
 import ru.astrosoup.mineberries.messaging.common.codec.TaskCodec;
+import ru.astrosoup.mineberries.messaging.common.codec.ResultMetaRegistry;
 import ru.astrosoup.mineberries.messaging.common.codec.TaskMetaRegistry;
 
 @Configuration
 public class MessagingConfig {
-    @Bean TaskMetaRegistry taskMetaRegistry() { return new TaskMetaRegistry("ru.astrosoup.mineberries"); }
+    @Bean ResultMetaRegistry resultMetaRegistry() { return new ResultMetaRegistry("ru.astrosoup.mineberries"); }
 
-    @Bean TaskCodec taskCodec(TaskMetaRegistry registry) { return new TaskCodec(registry, TaskCodec.defaultMapper()); }
+    @Bean TaskMetaRegistry taskMetaRegistry(ResultMetaRegistry results) { return new TaskMetaRegistry(results, "ru.astrosoup.mineberries"); }
+
+    @Bean TaskCodec taskCodec(TaskMetaRegistry registry, ResultMetaRegistry results) { return new TaskCodec(registry, results, TaskCodec.defaultMapper()); }
 
 
 

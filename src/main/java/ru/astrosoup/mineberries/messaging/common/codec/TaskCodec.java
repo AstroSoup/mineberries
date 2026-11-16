@@ -14,10 +14,12 @@ import tools.jackson.databind.json.JsonMapper;
 
 public final class TaskCodec {
     private final TaskMetaRegistry registry;
+    private final ResultMetaRegistry results;
     private final ObjectMapper mapper;
 
-    public TaskCodec(TaskMetaRegistry registry, ObjectMapper mapper) {
+    public TaskCodec(TaskMetaRegistry registry, ResultMetaRegistry results, ObjectMapper mapper) {
         this.registry = registry;
+        this.results = results;
         this.mapper = mapper;
     }
 
@@ -51,7 +53,7 @@ public final class TaskCodec {
         if (meta.resultClass() == Void.class) return null;
         if (payload == null)
             throw new IllegalStateException("COMPLETED without payload for " + meta.type());
-        return mapper.convertValue(payload, meta.resultClass());
+        return results.require(meta.resultClass()).create(payload, mapper);
     }
 
     public static ObjectMapper defaultMapper() {

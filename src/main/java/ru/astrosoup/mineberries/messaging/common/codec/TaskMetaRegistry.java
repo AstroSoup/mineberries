@@ -22,8 +22,10 @@ import ru.astrosoup.mineberries.messaging.common.annotations.*;
 public final class TaskMetaRegistry {
     private final Map<Class<?>, TaskMeta> byClass = new HashMap<>();
     private final Map<String, TaskMeta> byType = new HashMap<>();
+    private final ResultMetaRegistry results;
 
-    public TaskMetaRegistry(String... basePackages) {
+    public TaskMetaRegistry(ResultMetaRegistry results, String... basePackages) {
+        this.results = results;
         var scanner = new ClassPathScanningCandidateComponentProvider(false);
         scanner.addIncludeFilter(new AnnotationTypeFilter(Task.class));
         for (String pkg : basePackages) {
@@ -54,6 +56,8 @@ public final class TaskMetaRegistry {
         Class<?> result = ResolvableType.forClass(clazz).as(AbstractTask.class).getGeneric(0).resolve();
         if (result == null)
             throw new IllegalStateException(clazz.getName() + ": can't resolve result type R of AbstractTask<R>");
+        if (result != Void.class && results.find(result).isEmpty())
+            throw new IllegalStateException(clazz.getName() + ": result type " + result.getName() + " is not annotated with @Result");
 
         var meta = new TaskMeta(type, (Class<? extends AbstractTask<?>>) clazz, result, collectProperties(clazz));
         TaskMeta prev = byType.putIfAbsent(type, meta);
