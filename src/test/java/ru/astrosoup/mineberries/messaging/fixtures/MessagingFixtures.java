@@ -11,6 +11,18 @@ import ru.astrosoup.mineberries.messaging.common.annotations.Task;
 public final class MessagingFixtures {
     public static final String PACKAGE = MessagingFixtures.class.getPackageName();
 
+    /**
+     * Packages scanned by the tests: the real bot task packages plus these fixtures.
+     * The invalid fixtures live outside these packages so the application scan never
+     * picks them up.
+     */
+    public static final String[] SCAN_PACKAGES = {
+            "ru.astrosoup.mineberries.messaging.banker",
+            "ru.astrosoup.mineberries.messaging.supervisor",
+            "ru.astrosoup.mineberries.messaging.courier",
+            PACKAGE
+    };
+
     private MessagingFixtures() {}
 
     @Task("greet")
@@ -31,13 +43,6 @@ public final class MessagingFixtures {
         public int length() { return length; }
     }
 
-    @Task
-    public static class SumTask extends AbstractTask<TotalsResult> {
-        @Property private final List<Integer> numbers;
-
-        public SumTask(List<Integer> numbers) { this.numbers = numbers; }
-    }
-
     @Result("Totals")
     public static class TotalsResult {
         @Property private final List<Integer> numbers;
@@ -56,17 +61,6 @@ public final class MessagingFixtures {
 
     @Result
     public static class AckResult {}
-
-    @Task
-    public static class NoteTask extends AbstractTask<NoteResult> {}
-
-    @Result
-    public static class NoteResult {
-        @Property private final String note;
-
-        public NoteResult(String note) { this.note = note; }
-        public String note() { return note; }
-    }
 
     public abstract static class OwnedTask<R> extends AbstractTask<R> {
         @Property protected final String owner;
