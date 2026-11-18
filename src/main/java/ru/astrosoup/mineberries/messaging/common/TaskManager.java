@@ -39,7 +39,7 @@ public class TaskManager {
         });
         return task;
     }
-
+    
     @SuppressWarnings("unchecked")
     private void onEvent(EventDto dto) {
         AbstractTask<Object> task = (AbstractTask<Object>) active.get(dto.messageId());
