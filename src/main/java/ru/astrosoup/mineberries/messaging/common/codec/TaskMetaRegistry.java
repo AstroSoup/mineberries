@@ -19,6 +19,15 @@ import org.springframework.util.ClassUtils;
 import ru.astrosoup.mineberries.messaging.common.AbstractTask;
 import ru.astrosoup.mineberries.messaging.common.annotations.*;
 
+/**
+ * Registry of all classes annotated with
+ * {@link ru.astrosoup.mineberries.messaging.common.annotations.Task} in the
+ * given packages.
+ *
+ * <p>Registration validates the task hierarchy, resolves its result type, and
+ * collects its {@link ru.astrosoup.mineberries.messaging.common.annotations.Property}
+ * fields. Duplicate task type identifiers fail at startup.
+ */
 public final class TaskMetaRegistry {
     private final Map<Class<?>, TaskMeta> byClass = new HashMap<>();
     private final Map<String, TaskMeta> byType = new HashMap<>();

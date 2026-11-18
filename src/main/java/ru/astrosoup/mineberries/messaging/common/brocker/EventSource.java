@@ -4,4 +4,8 @@ import java.util.function.Consumer;
 
 import ru.astrosoup.mineberries.messaging.common.dtos.EventDto;
 
-public interface EventSource   { void subscribe(Consumer<EventDto> handler); }
+/** Source of task lifecycle events delivered by the broker. */
+public interface EventSource {
+    /** Registers a handler that receives every incoming event. */
+    void subscribe(Consumer<EventDto> handler);
+}

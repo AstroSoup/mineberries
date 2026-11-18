@@ -11,11 +11,17 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.experimental.Accessors;
 import ru.astrosoup.mineberries.messaging.common.exceptions.TaskFailedException;
+
 /**
-* 
-* AbstractTask - parent class for any task sent to a bot.
-**/
-@AllArgsConstructor @Accessors(fluent = true) 
+ * Base class for a task sent to a bot.
+ *
+ * <p>Each task has a unique id, a lifecycle state, progress listeners, and a
+ * future that completes with the decoded result. Events are applied in version
+ * order; terminal states are final.
+ *
+ * @param <R> result type produced by the task
+ */
+@AllArgsConstructor @Accessors(fluent = true)
 public abstract class AbstractTask<R> {
 
     private final @Getter UUID id;

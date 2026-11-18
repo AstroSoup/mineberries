@@ -12,6 +12,12 @@ import ru.astrosoup.mineberries.messaging.common.dtos.MessageDto;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
 
+/**
+ * Converts tasks to broker messages and broker events back to task events.
+ *
+ * <p>Encoding uses the registered {@link TaskMeta}; decoding resolves the
+ * result class through the {@link ResultMetaRegistry}.
+ */
 public final class TaskCodec {
     private final TaskMetaRegistry registry;
     private final ResultMetaRegistry results;

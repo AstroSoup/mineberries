@@ -9,7 +9,14 @@ import ru.astrosoup.mineberries.messaging.common.brocker.*;
 import ru.astrosoup.mineberries.messaging.common.codec.TaskCodec;
 import ru.astrosoup.mineberries.messaging.common.dtos.EventDto;
 import ru.astrosoup.mineberries.messaging.common.dtos.MessageDto;
-@Slf4j 
+/**
+ * Submits tasks to the bot and tracks their lifecycle.
+ *
+ * <p>Submitted tasks are kept until a terminal event arrives. Events are
+ * matched to tasks by message id and applied in version order; late or
+ * duplicate events are ignored.
+ */
+@Slf4j
 public class TaskManager {
 
     private final MessageSender sender;

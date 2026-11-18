@@ -8,6 +8,14 @@ import java.util.Map;
 
 import tools.jackson.databind.ObjectMapper;
 
+/**
+ * Runtime metadata for a class annotated with {@link ru.astrosoup.mineberries.messaging.common.annotations.Result}.
+ *
+ * @param type        result type identifier used on the wire
+ * @param resultClass annotated result class
+ * @param params      properties in declaration order
+ * @param constructor constructor that accepts the property values
+ */
 public record ResultMeta(String type, Class<?> resultClass, List<TaskMeta.Param> params, Constructor<?> constructor) {
 
     /** Builds a result instance from a COMPLETED payload. Every @Property key must be present. */

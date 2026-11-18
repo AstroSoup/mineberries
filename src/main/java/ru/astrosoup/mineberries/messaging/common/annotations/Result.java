@@ -12,5 +12,6 @@ import java.lang.annotation.Target;
  */
 @Retention(RetentionPolicy.RUNTIME) @Target(ElementType.TYPE)
 public @interface Result {
+    /** Result type identifier; defaults to the simple class name when empty. */
     String value() default "";
 }

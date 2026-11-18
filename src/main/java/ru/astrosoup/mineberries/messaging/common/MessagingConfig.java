@@ -11,6 +11,7 @@ import ru.astrosoup.mineberries.messaging.common.codec.TaskCodec;
 import ru.astrosoup.mineberries.messaging.common.codec.ResultMetaRegistry;
 import ru.astrosoup.mineberries.messaging.common.codec.TaskMetaRegistry;
 
+/** Spring configuration for the messaging registries, codec, and task manager. */
 @Configuration
 public class MessagingConfig {
     @Bean ResultMetaRegistry resultMetaRegistry() { return new ResultMetaRegistry("ru.astrosoup.mineberries"); }

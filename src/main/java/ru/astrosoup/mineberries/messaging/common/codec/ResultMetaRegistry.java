@@ -20,6 +20,14 @@ import org.springframework.util.ClassUtils;
 import ru.astrosoup.mineberries.messaging.common.annotations.Property;
 import ru.astrosoup.mineberries.messaging.common.annotations.Result;
 
+/**
+ * Registry of all classes annotated with
+ * {@link ru.astrosoup.mineberries.messaging.common.annotations.Result} in the
+ * given packages.
+ *
+ * <p>Registration validates each result class and builds its {@link ResultMeta}.
+ * Duplicate result type identifiers fail at startup.
+ */
 public final class ResultMetaRegistry {
     private final Map<Class<?>, ResultMeta> byClass = new HashMap<>();
     private final Map<String, ResultMeta> byType = new HashMap<>();
