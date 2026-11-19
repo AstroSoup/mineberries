@@ -1,0 +1,14 @@
+{
+  "messageId": "4a5b6c7d-8e9f-4a1b-9c2d-3e4f5a6b7c8d",
+  "kind": "task",
+  "type": "supervisor.load_courier_parcel",
+  "schemaVersion": 1,
+  "payload": {
+    "warehouseId": 1,
+    "parcelPoint": { "world": "overworld", "x": 105, "y": 64, "z": -20 },
+    "items": [
+      { "itemId": 1, "material": "minecraft:diamond", "quantity": 64 },
+      { "itemId": 2, "material": "minecraft:oak_planks", "quantity": 32 }
+    ]
+  }
+}

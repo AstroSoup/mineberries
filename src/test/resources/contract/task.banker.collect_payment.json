@@ -1,0 +1,12 @@
+{
+  "messageId": "1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d",
+  "kind": "task",
+  "type": "banker.collect_payment",
+  "schemaVersion": 1,
+  "expiresAt": "2026-11-19T09:20:00Z",
+  "payload": {
+    "payerNickname": "buyer_bob",
+    "amount": 1000.00,
+    "timeoutSeconds": 900
+  }
+}

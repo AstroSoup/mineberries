@@ -1,0 +1,23 @@
+{
+  "messageId": "3a4b5c6d-7e8f-4a9b-8c1d-2e3f4a5b6c7d",
+  "version": 1,
+  "type": "COMPLETED",
+  "occurredAt": "2026-11-19T10:00:50Z",
+  "payload": {
+    "warehouseId": 1,
+    "actualItems": [
+      { "itemId": 1, "material": "minecraft:diamond", "quantity": 60 },
+      { "itemId": 2, "material": "minecraft:oak_planks", "quantity": 32 },
+      { "itemId": null, "material": "minecraft:dirt", "quantity": 3 }
+    ],
+    "discrepancies": [
+      {
+        "itemId": 1,
+        "material": "minecraft:diamond",
+        "expectedQuantity": 64,
+        "actualQuantity": 60
+      }
+    ],
+    "completedAt": "2026-11-19T10:00:45Z"
+  }
+}

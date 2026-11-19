@@ -318,8 +318,8 @@ in version order and persisting the task state in the same transaction.
 
 ## 9. Validating the examples
 
-From the repository root, one command validates all examples against the draft 2020-12
-schemas using `ajv-cli`:
+From the repository root, one command validates all examples and contract fixtures
+against the draft 2020-12 schemas using `ajv-cli`:
 
 ```bash
 npx --yes ajv-cli@5 validate --spec=draft2020 \
@@ -327,6 +327,7 @@ npx --yes ajv-cli@5 validate --spec=draft2020 \
   -r documentation/schemas/common.schema.json \
   -r documentation/schemas/payloads.schema.json \
   -d "documentation/schemas/examples/task.*.json" \
+  -d "src/test/resources/contract/task.*.json" \
 && npx --yes ajv-cli@5 validate --spec=draft2020 \
   -s documentation/schemas/cancel.schema.json \
   -r documentation/schemas/common.schema.json \
@@ -335,10 +336,26 @@ npx --yes ajv-cli@5 validate --spec=draft2020 \
   -s documentation/schemas/event.schema.json \
   -r documentation/schemas/common.schema.json \
   -r documentation/schemas/payloads.schema.json \
-  -d "documentation/schemas/examples/event.*.json"
+  -d "documentation/schemas/examples/event.*.json" \
+  -d "src/test/resources/contract/event.completed.*.json"
 ```
 
-## 10. File index
+## 10. Contract fixtures
+
+The executable fixtures used by the Java drift test and by the future TypeScript contract
+tests live in [`src/test/resources/contract/`](../src/test/resources/contract/):
+
+| Fixture | Covers |
+| --- | --- |
+| `task.<task type>.json` | One task message for every registered `@Task` type |
+| `event.completed.<task type>.json` | One `COMPLETED` event for every registered `@Result` type |
+
+Each fixture is identical to the matching file in `schemas/examples/`. The validation
+command in section 9 checks both sets. `ContractDriftTest` fails when a registered task or
+result has no fixture, when a fixture does not decode through `TaskCodec`, or when
+re-encoding changes the task payload.
+
+## 11. File index
 
 | File | Purpose |
 | --- | --- |
@@ -348,3 +365,4 @@ npx --yes ajv-cli@5 validate --spec=draft2020 \
 | `schemas/cancel.schema.json` | Cancel message envelope |
 | `schemas/event.schema.json` | Event envelope and per-type payload dispatch |
 | `schemas/examples/` | One example per task type, one per result type, plus cancel and non-completed events |
+| `src/test/resources/contract/` | Executable task and completed-result fixtures shared by Java and TypeScript tests |

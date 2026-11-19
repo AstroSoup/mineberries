@@ -1,0 +1,11 @@
+{
+  "messageId": "2a3b4c5d-6e7f-4a8b-9c0d-1e2f3a4b5c6d",
+  "version": 1,
+  "type": "COMPLETED",
+  "occurredAt": "2026-11-19T09:30:10Z",
+  "payload": {
+    "recipientNickname": "seller_sam",
+    "amount": 900.00,
+    "paidAt": "2026-11-19T09:30:05Z"
+  }
+}
