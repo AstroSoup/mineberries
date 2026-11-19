@@ -1,0 +1,16 @@
+{
+  "messageId": "5a6b7c8d-9e1f-4a2b-8c3d-4e5f6a7b8c9d",
+  "version": 1,
+  "type": "COMPLETED",
+  "occurredAt": "2026-11-19T10:10:30Z",
+  "payload": {
+    "parcelPoint": { "world": "overworld", "x": 105, "y": 64, "z": -20 },
+    "unloadedItems": [
+      { "itemId": 1, "material": "minecraft:diamond", "quantity": 64 }
+    ],
+    "remainingItems": [
+      { "itemId": 2, "material": "minecraft:oak_planks", "quantity": 32 }
+    ],
+    "unloadedAt": "2026-11-19T10:10:25Z"
+  }
+}

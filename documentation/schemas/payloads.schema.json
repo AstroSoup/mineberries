@@ -1,0 +1,256 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mineberries.example/schemas/payloads.schema.json",
+  "title": "Mineberries payloads",
+  "description": "Task payloads, completed-result payloads and generic event payloads.",
+  "$defs": {
+    "bankerSendVerificationCodeTask": {
+      "type": "object",
+      "required": ["nickname", "code"],
+      "properties": {
+        "nickname": { "$ref": "common.schema.json#/$defs/nickname" },
+        "code": { "$ref": "common.schema.json#/$defs/nonBlank" }
+      },
+      "additionalProperties": true
+    },
+    "bankerCollectPaymentTask": {
+      "type": "object",
+      "required": ["payerNickname", "amount", "timeoutSeconds"],
+      "properties": {
+        "payerNickname": { "$ref": "common.schema.json#/$defs/nickname" },
+        "amount": { "$ref": "common.schema.json#/$defs/money" },
+        "timeoutSeconds": { "type": "integer", "minimum": 1 }
+      },
+      "additionalProperties": true
+    },
+    "bankerSendPaymentTask": {
+      "type": "object",
+      "required": ["recipientNickname", "amount"],
+      "properties": {
+        "recipientNickname": { "$ref": "common.schema.json#/$defs/nickname" },
+        "amount": { "$ref": "common.schema.json#/$defs/money" }
+      },
+      "additionalProperties": true
+    },
+    "supervisorRunInventoryTask": {
+      "type": "object",
+      "required": ["warehouseId", "expectedItems"],
+      "properties": {
+        "warehouseId": { "type": "integer", "minimum": 1 },
+        "expectedItems": {
+          "type": "array",
+          "items": { "$ref": "common.schema.json#/$defs/itemAmount" }
+        }
+      },
+      "additionalProperties": true
+    },
+    "supervisorLoadCourierParcelTask": {
+      "type": "object",
+      "required": ["warehouseId", "parcelPoint", "items"],
+      "properties": {
+        "warehouseId": { "type": "integer", "minimum": 1 },
+        "parcelPoint": { "$ref": "common.schema.json#/$defs/worldPoint" },
+        "items": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "common.schema.json#/$defs/itemAmount" }
+        }
+      },
+      "additionalProperties": true
+    },
+    "supervisorUnloadCourierParcelTask": {
+      "type": "object",
+      "required": ["warehouseId", "parcelPoint"],
+      "properties": {
+        "warehouseId": { "type": "integer", "minimum": 1 },
+        "parcelPoint": { "$ref": "common.schema.json#/$defs/worldPoint" }
+      },
+      "additionalProperties": true
+    },
+    "courierDeliverOrderTask": {
+      "type": "object",
+      "required": ["orderId", "pickupPoint", "pickupContainer", "dropoffPoint", "dropoffContainer"],
+      "properties": {
+        "orderId": { "type": "integer", "minimum": 1 },
+        "pickupPoint": { "$ref": "common.schema.json#/$defs/worldPoint" },
+        "pickupContainer": { "$ref": "common.schema.json#/$defs/worldPoint" },
+        "dropoffPoint": { "$ref": "common.schema.json#/$defs/worldPoint" },
+        "dropoffContainer": {
+          "anyOf": [
+            { "$ref": "common.schema.json#/$defs/worldPoint" },
+            { "type": "null" }
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+
+    "verificationCodeDeliveryResult": {
+      "type": "object",
+      "required": ["nickname", "deliveredAt"],
+      "properties": {
+        "nickname": { "$ref": "common.schema.json#/$defs/nickname" },
+        "deliveredAt": { "$ref": "common.schema.json#/$defs/instant" }
+      },
+      "additionalProperties": true
+    },
+    "paymentCollectedResult": {
+      "type": "object",
+      "required": ["payerNickname", "amount", "paidAt"],
+      "properties": {
+        "payerNickname": { "$ref": "common.schema.json#/$defs/nickname" },
+        "amount": { "$ref": "common.schema.json#/$defs/money" },
+        "paidAt": { "$ref": "common.schema.json#/$defs/instant" }
+      },
+      "additionalProperties": true
+    },
+    "paymentSentResult": {
+      "type": "object",
+      "required": ["recipientNickname", "amount", "paidAt"],
+      "properties": {
+        "recipientNickname": { "$ref": "common.schema.json#/$defs/nickname" },
+        "amount": { "$ref": "common.schema.json#/$defs/money" },
+        "paidAt": { "$ref": "common.schema.json#/$defs/instant" }
+      },
+      "additionalProperties": true
+    },
+    "inventoryReport": {
+      "type": "object",
+      "required": ["warehouseId", "actualItems", "discrepancies", "completedAt"],
+      "properties": {
+        "warehouseId": { "type": "integer", "minimum": 1 },
+        "actualItems": {
+          "type": "array",
+          "items": { "$ref": "common.schema.json#/$defs/itemAmount" }
+        },
+        "discrepancies": {
+          "type": "array",
+          "items": { "$ref": "common.schema.json#/$defs/inventoryDiscrepancy" }
+        },
+        "completedAt": { "$ref": "common.schema.json#/$defs/instant" }
+      },
+      "additionalProperties": true
+    },
+    "courierParcelLoadResult": {
+      "type": "object",
+      "required": ["parcelPoint", "loadedItems", "missingItems", "loadedAt"],
+      "properties": {
+        "parcelPoint": { "$ref": "common.schema.json#/$defs/worldPoint" },
+        "loadedItems": {
+          "type": "array",
+          "items": { "$ref": "common.schema.json#/$defs/itemAmount" }
+        },
+        "missingItems": {
+          "type": "array",
+          "items": { "$ref": "common.schema.json#/$defs/itemAmount" }
+        },
+        "loadedAt": { "$ref": "common.schema.json#/$defs/instant" }
+      },
+      "additionalProperties": true
+    },
+    "courierParcelUnloadResult": {
+      "type": "object",
+      "required": ["parcelPoint", "unloadedItems", "remainingItems", "unloadedAt"],
+      "properties": {
+        "parcelPoint": { "$ref": "common.schema.json#/$defs/worldPoint" },
+        "unloadedItems": {
+          "type": "array",
+          "items": { "$ref": "common.schema.json#/$defs/itemAmount" }
+        },
+        "remainingItems": {
+          "type": "array",
+          "items": { "$ref": "common.schema.json#/$defs/itemAmount" }
+        },
+        "unloadedAt": { "$ref": "common.schema.json#/$defs/instant" }
+      },
+      "additionalProperties": true
+    },
+    "deliveryResult": {
+      "type": "object",
+      "required": [
+        "orderId",
+        "outcome",
+        "dropoffContainer",
+        "usedFallbackContainer",
+        "movedItems",
+        "finishedAt"
+      ],
+      "properties": {
+        "orderId": { "type": "integer", "minimum": 1 },
+        "outcome": {
+          "type": "string",
+          "enum": ["DELIVERED", "DROPOFF_BLOCKED", "CARGO_LOST"]
+        },
+        "dropoffContainer": {
+          "anyOf": [
+            { "$ref": "common.schema.json#/$defs/worldPoint" },
+            { "type": "null" }
+          ]
+        },
+        "usedFallbackContainer": { "type": "boolean" },
+        "movedItems": {
+          "type": "array",
+          "items": { "$ref": "common.schema.json#/$defs/itemAmount" }
+        },
+        "finishedAt": { "$ref": "common.schema.json#/$defs/instant" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "outcome": { "const": "DELIVERED" } },
+            "required": ["outcome"]
+          },
+          "then": {
+            "properties": {
+              "dropoffContainer": { "$ref": "common.schema.json#/$defs/worldPoint" }
+            }
+          }
+        }
+      ],
+      "additionalProperties": true
+    },
+
+    "acceptedEventPayload": {
+      "type": "object",
+      "required": ["bot"],
+      "properties": {
+        "bot": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": true
+    },
+    "progressEventPayload": {
+      "type": "object",
+      "required": ["stage"],
+      "properties": {
+        "stage": { "$ref": "common.schema.json#/$defs/nonBlank" }
+      },
+      "additionalProperties": true
+    },
+    "failedEventPayload": {
+      "type": "object",
+      "required": ["message", "retryable", "outcomeUnknown"],
+      "properties": {
+        "message": { "$ref": "common.schema.json#/$defs/nonBlank" },
+        "retryable": { "type": "boolean" },
+        "outcomeUnknown": { "type": "boolean" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "outcomeUnknown": { "const": true } },
+            "required": ["outcomeUnknown"]
+          },
+          "then": {
+            "properties": { "retryable": { "const": false } }
+          }
+        }
+      ],
+      "additionalProperties": true
+    },
+    "canceledEventPayload": {
+      "type": "object",
+      "description": "Empty object. Unknown fields are ignored by consumers.",
+      "additionalProperties": true
+    }
+  }
+}

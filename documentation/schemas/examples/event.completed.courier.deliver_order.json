@@ -1,0 +1,16 @@
+{
+  "messageId": "6a7b8c9d-1e2f-4a3b-9c4d-5e6f7a8b9c1d",
+  "version": 2,
+  "type": "COMPLETED",
+  "occurredAt": "2026-11-19T10:16:05Z",
+  "payload": {
+    "orderId": 42,
+    "outcome": "DELIVERED",
+    "dropoffContainer": { "world": "overworld", "x": 201, "y": 70, "z": 50 },
+    "usedFallbackContainer": true,
+    "movedItems": [
+      { "itemId": 1, "material": "minecraft:diamond", "quantity": 64 }
+    ],
+    "finishedAt": "2026-11-19T10:16:00Z"
+  }
+}

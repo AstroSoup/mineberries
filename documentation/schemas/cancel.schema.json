@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mineberries.example/schemas/cancel.schema.json",
+  "title": "Cancel message",
+  "description": "A cooperative cancellation request published by service A on the tasks queue.",
+  "type": "object",
+  "required": ["messageId", "kind", "schemaVersion"],
+  "properties": {
+    "messageId": {
+      "$ref": "common.schema.json#/$defs/uuid",
+      "description": "Id of the task to cancel. No new task id is created."
+    },
+    "kind": {
+      "const": "cancel"
+    },
+    "schemaVersion": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Version of the cancel message schema. Starts at 1."
+    }
+  },
+  "additionalProperties": true
+}

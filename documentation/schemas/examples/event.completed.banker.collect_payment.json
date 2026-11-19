@@ -1,0 +1,11 @@
+{
+  "messageId": "1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d",
+  "version": 1,
+  "type": "COMPLETED",
+  "occurredAt": "2026-11-19T09:12:35Z",
+  "payload": {
+    "payerNickname": "buyer_bob",
+    "amount": 1000.00,
+    "paidAt": "2026-11-19T09:12:30Z"
+  }
+}

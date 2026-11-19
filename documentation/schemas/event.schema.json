@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mineberries.example/schemas/event.schema.json",
+  "title": "Event message",
+  "description": "A task lifecycle event published by service B on the events queue and consumed by service A.",
+  "type": "object",
+  "required": ["messageId", "version", "type", "occurredAt", "payload"],
+  "properties": {
+    "messageId": {
+      "$ref": "common.schema.json#/$defs/uuid",
+      "description": "Id of the task the event belongs to."
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Event version for this task. Starts at 0 and strictly increases."
+    },
+    "type": {
+      "type": "string",
+      "enum": ["ACCEPTED", "PROGRESS", "COMPLETED", "FAILED", "CANCELED"]
+    },
+    "occurredAt": {
+      "$ref": "common.schema.json#/$defs/instant",
+      "description": "Time the event was produced."
+    },
+    "payload": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": true,
+  "oneOf": [
+    {
+      "properties": {
+        "type": { "const": "ACCEPTED" },
+        "payload": { "$ref": "payloads.schema.json#/$defs/acceptedEventPayload" }
+      }
+    },
+    {
+      "properties": {
+        "type": { "const": "PROGRESS" },
+        "payload": { "$ref": "payloads.schema.json#/$defs/progressEventPayload" }
+      }
+    },
+    {
+      "properties": {
+        "type": { "const": "COMPLETED" },
+        "payload": {
+          "anyOf": [
+            { "$ref": "payloads.schema.json#/$defs/verificationCodeDeliveryResult" },
+            { "$ref": "payloads.schema.json#/$defs/paymentCollectedResult" },
+            { "$ref": "payloads.schema.json#/$defs/paymentSentResult" },
+            { "$ref": "payloads.schema.json#/$defs/inventoryReport" },
+            { "$ref": "payloads.schema.json#/$defs/courierParcelLoadResult" },
+            { "$ref": "payloads.schema.json#/$defs/courierParcelUnloadResult" },
+            { "$ref": "payloads.schema.json#/$defs/deliveryResult" }
+          ]
+        }
+      }
+    },
+    {
+      "properties": {
+        "type": { "const": "FAILED" },
+        "payload": { "$ref": "payloads.schema.json#/$defs/failedEventPayload" }
+      }
+    },
+    {
+      "properties": {
+        "type": { "const": "CANCELED" },
+        "payload": { "$ref": "payloads.schema.json#/$defs/canceledEventPayload" }
+      }
+    }
+  ]
+}

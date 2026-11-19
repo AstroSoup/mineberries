@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mineberries.example/schemas/task.schema.json",
+  "title": "Task message",
+  "description": "A unit of work published by service A on the tasks queue and consumed by service B.",
+  "type": "object",
+  "required": ["messageId", "kind", "type", "schemaVersion", "payload"],
+  "properties": {
+    "messageId": {
+      "$ref": "common.schema.json#/$defs/uuid",
+      "description": "Task id. Created once by A and reused on every redelivery."
+    },
+    "kind": {
+      "const": "task"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "banker.send_verification_code",
+        "banker.collect_payment",
+        "banker.send_payment",
+        "supervisor.run_inventory",
+        "supervisor.load_courier_parcel",
+        "supervisor.unload_courier_parcel",
+        "courier.deliver_order"
+      ]
+    },
+    "schemaVersion": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Payload schema version for this task type. Starts at 1."
+    },
+    "expiresAt": {
+      "$ref": "common.schema.json#/$defs/instant",
+      "description": "Optional task deadline. A currently sets it for banker.send_verification_code and banker.collect_payment."
+    },
+    "payload": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": true,
+  "oneOf": [
+    {
+      "properties": {
+        "type": { "const": "banker.send_verification_code" },
+        "payload": { "$ref": "payloads.schema.json#/$defs/bankerSendVerificationCodeTask" }
+      }
+    },
+    {
+      "properties": {
+        "type": { "const": "banker.collect_payment" },
+        "payload": { "$ref": "payloads.schema.json#/$defs/bankerCollectPaymentTask" }
+      }
+    },
+    {
+      "properties": {
+        "type": { "const": "banker.send_payment" },
+        "payload": { "$ref": "payloads.schema.json#/$defs/bankerSendPaymentTask" }
+      }
+    },
+    {
+      "properties": {
+        "type": { "const": "supervisor.run_inventory" },
+        "payload": { "$ref": "payloads.schema.json#/$defs/supervisorRunInventoryTask" }
+      }
+    },
+    {
+      "properties": {
+        "type": { "const": "supervisor.load_courier_parcel" },
+        "payload": { "$ref": "payloads.schema.json#/$defs/supervisorLoadCourierParcelTask" }
+      }
+    },
+    {
+      "properties": {
+        "type": { "const": "supervisor.unload_courier_parcel" },
+        "payload": { "$ref": "payloads.schema.json#/$defs/supervisorUnloadCourierParcelTask" }
+      }
+    },
+    {
+      "properties": {
+        "type": { "const": "courier.deliver_order" },
+        "payload": { "$ref": "payloads.schema.json#/$defs/courierDeliverOrderTask" }
+      }
+    }
+  ]
+}
