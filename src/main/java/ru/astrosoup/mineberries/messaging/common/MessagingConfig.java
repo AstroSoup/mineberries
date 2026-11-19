@@ -4,10 +4,9 @@ package ru.astrosoup.mineberries.messaging.common;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-
-import ru.astrosoup.mineberries.messaging.common.brocker.EventSource;
-import ru.astrosoup.mineberries.messaging.common.brocker.MessageSender;
 import ru.astrosoup.mineberries.messaging.common.codec.TaskCodec;
+import ru.astrosoup.mineberries.messaging.common.broker.EventSource;
+import ru.astrosoup.mineberries.messaging.common.broker.MessageSender;
 import ru.astrosoup.mineberries.messaging.common.codec.ResultMetaRegistry;
 import ru.astrosoup.mineberries.messaging.common.codec.TaskMetaRegistry;
 

@@ -6,8 +6,8 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
-import ru.astrosoup.mineberries.messaging.common.brocker.EventSource;
-import ru.astrosoup.mineberries.messaging.common.brocker.MessageSender;
+import ru.astrosoup.mineberries.messaging.common.broker.EventSource;
+import ru.astrosoup.mineberries.messaging.common.broker.MessageSender;
 import ru.astrosoup.mineberries.messaging.common.dtos.EventDto;
 import ru.astrosoup.mineberries.messaging.common.dtos.MessageDto;
 

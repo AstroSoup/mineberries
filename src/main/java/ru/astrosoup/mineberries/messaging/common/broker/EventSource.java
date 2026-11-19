@@ -1,4 +1,4 @@
-package ru.astrosoup.mineberries.messaging.common.brocker;
+package ru.astrosoup.mineberries.messaging.common.broker;
 
 import java.util.function.Consumer;
 
