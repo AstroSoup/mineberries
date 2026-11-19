@@ -62,6 +62,25 @@ class TaskCodecTest {
     }
 
     @Test
+    void encodesTaskEnvelopeFields() {
+        var dto = codec.encode(new SendPayment("seller", new BigDecimal("900.00")));
+
+        assertEquals("task", dto.kind());
+        assertEquals(1, dto.schemaVersion());
+        assertNull(dto.expiresAt());
+    }
+
+    @Test
+    void encodesTaskExpiryWhenProvided() {
+        var expiry = Instant.parse("2026-11-19T09:02:00Z");
+
+        var dto = codec.encode(new ExpiringTask(expiry));
+
+        assertEquals("expiring", dto.type());
+        assertEquals(expiry, dto.expiresAt());
+    }
+
+    @Test
     void typeDefaultsToSimpleClassName() {
         assertEquals("PingTask", codec.encode(new PingTask()).type());
     }
@@ -134,9 +153,9 @@ class TaskCodecTest {
     // ---- decode: non-result events ----
 
     @Test
-    void decodesAccepted() {
-        var ev = codec.decode(SendPayment.class, Events.accepted(id, 1));
-        assertEquals(new TaskEvent.Accepted<Object>(1), ev);
+    void decodesAcceptedWithBotName() {
+        var ev = codec.decode(SendPayment.class, Events.accepted(id, 1, "courier_andy"));
+        assertEquals(new TaskEvent.Accepted<Object>(1, "courier_andy"), ev);
     }
 
     @Test
@@ -153,20 +172,27 @@ class TaskCodecTest {
 
     @Test
     void decodesFailed() {
-        var ev = codec.decode(SendPayment.class, Events.failed(id, 5, "boom", true));
-        assertEquals(new TaskEvent.Failed<Object>(5, new TaskError("boom", true)), ev);
+        var ev = codec.decode(SendPayment.class, Events.failed(id, 5, "boom", true, false));
+        assertEquals(new TaskEvent.Failed<Object>(5, new TaskError("boom", true, false)), ev);
     }
 
     @Test
-    void failedWithoutRetryableFlagIsNotRetryable() {
+    void decodesFailedWithUnknownOutcome() {
+        var ev = codec.decode(SendPayment.class, Events.failed(id, 5, "payment outcome unknown", false, true));
+        assertEquals(new TaskEvent.Failed<Object>(5, new TaskError("payment outcome unknown", false, true)), ev);
+    }
+
+    @Test
+    void failedWithoutRetryableOrOutcomeUnknownFlagsDefaultsToFalse() {
         var dto = Events.of(id, 5, EventType.FAILED, Map.of("message", "boom"));
         var ev = codec.decode(SendPayment.class, dto);
-        assertEquals(new TaskEvent.Failed<Object>(5, new TaskError("boom", false)), ev);
+        assertEquals(new TaskEvent.Failed<Object>(5, new TaskError("boom", false, false)), ev);
     }
 
     @Test
-    void nonResultEventsDecodeWithNullPayload() {
-        assertEquals(new TaskEvent.Accepted<Object>(0), codec.decode(SendPayment.class, Events.of(id, 0, EventType.ACCEPTED, null)));
+    void acceptedWithoutPayloadHasNoBotName() {
+        assertEquals(new TaskEvent.Accepted<Object>(0, null),
+                codec.decode(SendPayment.class, Events.of(id, 0, EventType.ACCEPTED, null)));
     }
 
     // ---- decode: COMPLETED / @Result ----
@@ -353,7 +379,8 @@ class TaskCodecTest {
 
     @Test
     void decodeRejectsUnregisteredTaskClass() {
-        assertThrows(IllegalArgumentException.class, () -> codec.decode(PaymentSentResult.class, Events.accepted(id, 0)));
+        assertThrows(IllegalArgumentException.class,
+                () -> codec.decode(PaymentSentResult.class, Events.accepted(id, 0, "courier_andy")));
     }
 
     private Object completed(Class<?> taskClass, Map<String, Object> payload) {

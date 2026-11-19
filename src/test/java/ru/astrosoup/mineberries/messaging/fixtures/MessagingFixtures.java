@@ -1,5 +1,6 @@
 package ru.astrosoup.mineberries.messaging.fixtures;
 
+import java.time.Instant;
 import java.util.List;
 
 import ru.astrosoup.mineberries.messaging.common.AbstractTask;
@@ -58,6 +59,16 @@ public final class MessagingFixtures {
 
     @Task
     public static class AckTask extends AbstractTask<AckResult> {}
+
+    @Task("expiring")
+    public static class ExpiringTask extends AbstractTask<Void> {
+        private final Instant expiresAt;
+
+        public ExpiringTask(Instant expiresAt) { this.expiresAt = expiresAt; }
+
+        @Override
+        public Instant expiresAt() { return expiresAt; }
+    }
 
     @Result
     public static class AckResult {}

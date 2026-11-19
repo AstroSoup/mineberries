@@ -95,7 +95,7 @@ class TaskManagerTest {
     @Test
     void acceptedMovesTaskToAccepted() {
         var task = manager.submit(payment("seller", "900.00"));
-        broker.publish(Events.accepted(task.id(), 0));
+        broker.publish(Events.accepted(task.id(), 0, "banker_bot"));
         assertEquals(TaskState.ACCEPTED, task.state());
         assertFalse(task.result().isDone());
     }
@@ -106,7 +106,7 @@ class TaskManagerTest {
         var stages = new ArrayList<String>();
         task.onProgress(p -> stages.add(p.stage()));
 
-        broker.publish(Events.accepted(task.id(), 0));
+        broker.publish(Events.accepted(task.id(), 0, "banker_bot"));
         broker.publish(Events.progress(task.id(), 1, "packing"));
         broker.publish(Events.progress(task.id(), 2, "shipping"));
 
@@ -118,7 +118,7 @@ class TaskManagerTest {
     void completedDeliversDecodedResult() {
         var task = manager.submit(payment("seller", "900.00"));
 
-        broker.publish(Events.accepted(task.id(), 0));
+        broker.publish(Events.accepted(task.id(), 0, "banker_bot"));
         broker.publish(Events.completed(task.id(), 1, paymentPayload("seller", "900.00")));
 
         assertEquals(TaskState.COMPLETED, task.state());
@@ -140,12 +140,23 @@ class TaskManagerTest {
     void failedCompletesExceptionallyWithTaskError() {
         var task = manager.submit(payment("seller", "900.00"));
 
-        broker.publish(Events.failed(task.id(), 0, "boom", true));
+        broker.publish(Events.failed(task.id(), 0, "boom", true, false));
 
         assertEquals(TaskState.FAILED, task.state());
         var ex = assertInstanceOf(TaskFailedException.class, failureOf(task.result()));
         assertEquals("boom", ex.getMessage());
-        assertEquals(new TaskError("boom", true), ex.error());
+        assertEquals(new TaskError("boom", true, false), ex.error());
+    }
+
+    @Test
+    void failedWithUnknownOutcomeExposesTheFlag() {
+        var task = manager.submit(payment("seller", "900.00"));
+
+        broker.publish(Events.failed(task.id(), 0, "payment outcome unknown", false, true));
+
+        var ex = assertInstanceOf(TaskFailedException.class, failureOf(task.result()));
+        assertEquals(new TaskError("payment outcome unknown", false, true), ex.error());
+        assertTrue(ex.error().outcomeUnknown());
     }
 
     @Test
@@ -166,7 +177,7 @@ class TaskManagerTest {
         var stages = new ArrayList<String>();
         task.onProgress(p -> stages.add(p.stage()));
 
-        broker.publish(Events.accepted(task.id(), 0));
+        broker.publish(Events.accepted(task.id(), 0, "banker_bot"));
         broker.publish(Events.progress(task.id(), 2, "b"));
         broker.publish(Events.progress(task.id(), 1, "a"));  // older version
         broker.publish(Events.progress(task.id(), 2, "b2")); // duplicate version
@@ -180,7 +191,7 @@ class TaskManagerTest {
         var task = manager.submit(payment("seller", "900.00"));
         broker.publish(Events.completed(task.id(), 0, paymentPayload("seller", "900.00")));
 
-        broker.publish(Events.failed(task.id(), 1, "late", false));
+        broker.publish(Events.failed(task.id(), 1, "late", false, false));
 
         assertEquals(TaskState.COMPLETED, task.state());
         assertFalse(task.result().isCompletedExceptionally());
@@ -188,7 +199,7 @@ class TaskManagerTest {
 
     @Test
     void eventsForUnknownTasksAreIgnored() {
-        assertDoesNotThrow(() -> broker.publish(Events.accepted(UUID.randomUUID(), 0)));
+        assertDoesNotThrow(() -> broker.publish(Events.accepted(UUID.randomUUID(), 0, "banker_bot")));
     }
 
     @Test

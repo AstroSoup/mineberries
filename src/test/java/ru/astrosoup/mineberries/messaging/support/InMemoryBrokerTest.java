@@ -15,7 +15,9 @@ import ru.astrosoup.mineberries.messaging.common.dtos.MessageDto;
 class InMemoryBrokerTest {
     private final InMemoryBroker broker = new InMemoryBroker();
 
-    private static MessageDto message() { return new MessageDto(UUID.randomUUID(), "t", Map.of()); }
+    private static MessageDto message() {
+        return new MessageDto(UUID.randomUUID(), "task", "t", 1, null, Map.of());
+    }
 
     @Test
     void recordsSentMessagesInOrder() {
@@ -51,7 +53,7 @@ class InMemoryBrokerTest {
         broker.subscribe(first::add);
         broker.subscribe(second::add);
 
-        EventDto event = Events.accepted(UUID.randomUUID(), 0);
+        EventDto event = Events.accepted(UUID.randomUUID(), 0, "courier_andy");
         broker.publish(event);
 
         assertEquals(List.of(event), first);
@@ -60,6 +62,6 @@ class InMemoryBrokerTest {
 
     @Test
     void publishWithoutSubscribersIsANoOp() {
-        assertDoesNotThrow(() -> broker.publish(Events.accepted(UUID.randomUUID(), 0)));
+        assertDoesNotThrow(() -> broker.publish(Events.accepted(UUID.randomUUID(), 0, "courier_andy")));
     }
 }

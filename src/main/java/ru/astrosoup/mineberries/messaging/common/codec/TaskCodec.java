@@ -19,6 +19,9 @@ import tools.jackson.databind.json.JsonMapper;
  * result class through the {@link ResultMetaRegistry}.
  */
 public final class TaskCodec {
+    private static final String TASK_KIND = "task";
+    private static final int SCHEMA_VERSION = 1;
+
     private final TaskMetaRegistry registry;
     private final ResultMetaRegistry results;
     private final ObjectMapper mapper;
@@ -38,7 +41,7 @@ public final class TaskCodec {
             Object v = p.get(task);
             payload.put(p.name(), v == null ? null : mapper.convertValue(v, Object.class));
         }
-        return new MessageDto(task.id(), meta.type(), payload);
+        return new MessageDto(task.id(), TASK_KIND, meta.type(), SCHEMA_VERSION, task.expiresAt(), payload);
     }
 
     public TaskEvent<Object> decode(Class<?> taskClass, EventDto dto) {
@@ -47,10 +50,13 @@ public final class TaskCodec {
         Map<String, Object> p = dto.payload() == null ? Map.of() : dto.payload();
 
         return switch (dto.type()) {
-            case ACCEPTED  -> new TaskEvent.Accepted<>(version);
+            case ACCEPTED  -> new TaskEvent.Accepted<>(version, (String) p.get("bot"));
             case CANCELED -> new TaskEvent.Cancelled<>(version);
             case PROGRESS  -> new TaskEvent.Progress<>(version, new TaskProgress((String) p.get("stage")));
-            case FAILED    -> new TaskEvent.Failed<>(version, new TaskError((String) p.get("message"), Boolean.TRUE.equals(p.get("retryable"))));
+            case FAILED    -> new TaskEvent.Failed<>(version, new TaskError(
+                    (String) p.get("message"),
+                    Boolean.TRUE.equals(p.get("retryable")),
+                    Boolean.TRUE.equals(p.get("outcomeUnknown"))));
             case COMPLETED -> new TaskEvent.Completed<>(version, decodeResult(meta, dto.payload()));
         };
     }

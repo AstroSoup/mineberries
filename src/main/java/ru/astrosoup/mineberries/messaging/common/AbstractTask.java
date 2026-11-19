@@ -1,5 +1,6 @@
 package ru.astrosoup.mineberries.messaging.common;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -46,6 +47,16 @@ public abstract class AbstractTask<R> {
     }
     public CompletableFuture<R> result() {
         return result.copy();
+    }
+
+    /**
+     * Optional absolute deadline for this task.
+     *
+     * <p>Tasks without a deadline inherit the default {@code null}. A task with
+     * a deadline overrides this method and returns a stable instant.
+     */
+    public Instant expiresAt() {
+        return null;
     }
 
     // public methods

@@ -92,7 +92,7 @@ class MetaRegistryTest {
 
     @Test
     void allListsEveryTask() {
-        assertEquals(4, tasks.all().size()); // Greet, Ping, Ack, Label
+        assertEquals(5, tasks.all().size()); // Greet, Ping, Ack, Label, Expiring
     }
 
     // ---- application tasks ----

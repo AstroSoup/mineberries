@@ -9,8 +9,13 @@ public interface TaskEvent<R> {
     /** Monotonically increasing event version within one task. */
     long version();
 
-    /** The bot accepted the task. */
-    record Accepted<R>(long version) implements TaskEvent<R> {}
+    /**
+     * The bot accepted the task.
+     *
+     * @param version event version
+     * @param bot     name of the bot that took the task
+     */
+    record Accepted<R>(long version, String bot) implements TaskEvent<R> {}
 
     /** The task reported progress. */
     record Progress<R>(long version, TaskProgress progress) implements TaskEvent<R> {}
