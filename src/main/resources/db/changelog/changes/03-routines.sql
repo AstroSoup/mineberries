@@ -1,6 +1,6 @@
 --liquibase formatted sql
 
--- changeset mineberries:010-order-status-history-trigger
+-- changeset mineberries:010-order-status-history-trigger splitStatements:false
 
 CREATE OR REPLACE FUNCTION fn_order_status_history()
 RETURNS TRIGGER

@@ -175,7 +175,7 @@ INSERT INTO warehouse (warehouse_id, name, point_id, capacity) VALUES (1, 'Va wa
 INSERT INTO stock_item (warehouse_id, item_id, quantity) VALUES (1, 1, 64);
 
 -- Курьер
-INSERT INTO courier (courier_id, mc_nickname, status, created_by) VALUES (1,  'courier_andy', 'IDLE', 3);
+INSERT INTO courier (courier_id, mc_nickname, password, status, created_by) VALUES (1,  'courier_andy', 'test-only-placeholder', 'IDLE', 3);
 
 -- Сдвиг  счетчиков
 SELECT setval(pg_get_serial_sequence('app_user',   'user_id'),       (SELECT max(user_id)       FROM app_user));
