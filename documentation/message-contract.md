@@ -15,14 +15,23 @@ then change the Java and TypeScript implementations.
 Messages are UTF-8 JSON, one JSON object per AMQP message, with
 `content_type=application/json`.
 
-| Queue | Direction | Kind | Dead-letter queue |
-| --- | --- | --- | --- |
-| `tasks` | A to B | task and cancel messages | `tasks.dlq` |
-| `events` | B to A | task lifecycle events | `events.dlq` |
+| Queue | Direction | Kind | Dead-letter exchange | Dead-letter queue |
+| --- | --- | --- | --- | --- |
+| `tasks` | A to B | task and cancel messages | `tasks.dlx` | `tasks.dlq` |
+| `events` | B to A | task lifecycle events | `events.dlx` | `events.dlq` |
 
-Both queues and their dead-letter queues are durable. `tasks` and `events` are quorum
-queues. Publishers use persistent messages. Consumers declare the queues idempotently at
-startup.
+All queues and exchanges in the table are durable and not auto-deleted. The source
+queues are non-exclusive quorum queues (`x-queue-type=quorum`); the dead-letter queues
+are non-exclusive classic queues (`x-queue-type=classic`). Each source queue sets
+`x-dead-letter-exchange` to its exchange, `x-dead-letter-routing-key` to its dead-letter
+queue name, and `x-delivery-limit` to the configured failed-delivery limit (default
+`20`). Each dead-letter exchange is `direct` and binds to its dead-letter queue using
+that queue's name as the routing key. RabbitMQ dead-letters messages that exceed the
+limit.
+
+Publishers use persistent messages. Either service can declare the same topology
+idempotently at startup. If names or the delivery limit are overridden, both services
+must use the same vhost, names, and declaration arguments.
 
 Transport is at-least-once. Any message may be delivered more than once, and messages may
 be redelivered after a consumer or broker restart. Correctness comes from stable ids,

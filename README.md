@@ -98,6 +98,29 @@ node --env-file=.env build/libs/dist/main.js
 Keep the `BOT_*` values consistent with the corresponding `BOT_DB_*` and
 `RABBITMQ_BOT_*` stack values.
 
+### RabbitMQ topology
+
+Service A declares these objects on startup in `spring.rabbitmq.virtual-host`
+(`SPRING_RABBITMQ_VIRTUAL_HOST`). The vhost must already exist; the local stack creates
+it from `RABBITMQ_VHOST`. Keep Service B on the same vhost.
+
+| Default name | Object | Purpose | Service A property |
+| --- | --- | --- | --- |
+| `tasks` | Durable quorum queue | Carries tasks and cancellations from A to B | `mineberries.rabbitmq.tasks-queue` |
+| `events` | Durable quorum queue | Carries task lifecycle events from B to A | `mineberries.rabbitmq.events-queue` |
+| `tasks.dlx` | Durable direct exchange | Routes dead letters from `tasks` to `tasks.dlq` | `mineberries.rabbitmq.tasks-dead-letter-exchange` |
+| `events.dlx` | Durable direct exchange | Routes dead letters from `events` to `events.dlq` | `mineberries.rabbitmq.events-dead-letter-exchange` |
+| `tasks.dlq` | Durable classic queue | Holds dead-lettered tasks and cancellations | `mineberries.rabbitmq.tasks-dead-letter-queue` |
+| `events.dlq` | Durable classic queue | Holds dead-lettered events | `mineberries.rabbitmq.events-dead-letter-queue` |
+
+The routing key for each dead-letter binding is its dead-letter queue name.
+`mineberries.rabbitmq.delivery-limit` sets the failed-delivery limit on both quorum
+queues (default `20`). RabbitMQ dead-letters messages that exceed the limit.
+Redeclaration is safe when both services use the same names and arguments. To change
+arguments on an existing queue, coordinate a queue migration; restarting with different
+arguments does not update the queue in place. See the
+[message contract](documentation/message-contract.md#1-transport) for declaration details.
+
 ### Initialization and reset
 
 PostgreSQL runs `docker/postgres/init/10-create-service-databases.sh` only when
