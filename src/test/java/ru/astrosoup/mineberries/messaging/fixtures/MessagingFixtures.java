@@ -2,6 +2,7 @@ package ru.astrosoup.mineberries.messaging.fixtures;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
 
 import ru.astrosoup.mineberries.messaging.common.AbstractTask;
 import ru.astrosoup.mineberries.messaging.common.annotations.Property;
@@ -31,7 +32,8 @@ public final class MessagingFixtures {
         @Property private final String name;
         @Property("count") private final int times;
 
-        public GreetTask(String name, int times) { this.name = name; this.times = times; }
+        public GreetTask(String name, int times) { this(UUID.randomUUID(), name, times); }
+        public GreetTask(UUID id, String name, int times) { super(id); this.name = name; this.times = times; }
     }
 
     @Result
@@ -55,16 +57,25 @@ public final class MessagingFixtures {
     }
 
     @Task
-    public static class PingTask extends AbstractTask<Void> {}
+    public static class PingTask extends AbstractTask<Void> {
+        public PingTask() { this(UUID.randomUUID()); }
+        public PingTask(UUID id) { super(id); }
+    }
 
     @Task
-    public static class AckTask extends AbstractTask<AckResult> {}
+    public static class AckTask extends AbstractTask<AckResult> {
+        public AckTask() { this(UUID.randomUUID()); }
+        public AckTask(UUID id) { super(id); }
+    }
 
     @Task("expiring")
     public static class ExpiringTask extends AbstractTask<Void> {
         private final Instant expiresAt;
 
-        public ExpiringTask(Instant expiresAt) { this.expiresAt = expiresAt; }
+        public ExpiringTask(Instant expiresAt) { this(UUID.randomUUID(), expiresAt); }
+        public ExpiringTask(UUID id) { this(id, null); }
+
+        private ExpiringTask(UUID id, Instant expiresAt) { super(id); this.expiresAt = expiresAt; }
 
         @Override
         public Instant expiresAt() { return expiresAt; }
@@ -76,13 +87,14 @@ public final class MessagingFixtures {
     public abstract static class OwnedTask<R> extends AbstractTask<R> {
         @Property protected final String owner;
 
-        protected OwnedTask(String owner) { this.owner = owner; }
+        protected OwnedTask(UUID id, String owner) { super(id); this.owner = owner; }
     }
 
     @Task("owned")
     public static class LabelTask extends OwnedTask<Void> {
         @Property private final String label;
 
-        public LabelTask(String owner, String label) { super(owner); this.label = label; }
+        public LabelTask(String owner, String label) { this(UUID.randomUUID(), label, owner); }
+        public LabelTask(UUID id, String label, String owner) { super(id, owner); this.label = label; }
     }
 }

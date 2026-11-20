@@ -1,6 +1,7 @@
 package ru.astrosoup.mineberries.messaging.supervisor.tasks;
 
 import java.util.List;
+import java.util.UUID;
 
 import lombok.Getter;
 import ru.astrosoup.mineberries.messaging.common.AbstractTask;
@@ -26,6 +27,11 @@ public class RunInventory extends AbstractTask<InventoryReport> {
     @Property private final List<ItemAmount> expectedItems;
 
     public RunInventory(long warehouseId, List<ItemAmount> expectedItems) {
+        this(UUID.randomUUID(), warehouseId, expectedItems);
+    }
+
+    public RunInventory(UUID id, long warehouseId, List<ItemAmount> expectedItems) {
+        super(id);
         this.warehouseId = DomainPreconditions.positive(warehouseId, "warehouseId");
         this.expectedItems = DomainPreconditions.copy(expectedItems, "expectedItems");
     }

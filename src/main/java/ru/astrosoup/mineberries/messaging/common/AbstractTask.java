@@ -2,6 +2,7 @@ package ru.astrosoup.mineberries.messaging.common;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -19,6 +20,13 @@ import ru.astrosoup.mineberries.messaging.common.exceptions.TaskFailedException;
  * <p>Each task has a unique id, a lifecycle state, progress listeners, and a
  * future that completes with the decoded result. Events are applied in version
  * order; terminal states are final.
+ *
+ * <p>Concrete classes annotated with
+ * {@link ru.astrosoup.mineberries.messaging.common.annotations.Task @Task}
+ * must provide a public constructor that takes an existing {@link UUID} first,
+ * followed by the {@code @Property} values in metadata order. It must pass
+ * the supplied id to {@link #AbstractTask(UUID)}. Constructors for new tasks
+ * can delegate to this constructor with a randomly generated id.
  *
  * @param <R> result type produced by the task
  */
@@ -94,5 +102,35 @@ public abstract class AbstractTask<R> {
         }
         version = event.version();
     }
+
+    /**
+     * Initializes a freshly reconstructed task without replaying persisted events.
+     *
+     * <p>Terminal states complete the result future immediately. A restored
+     * non-terminal task continues to accept newer event versions and ignores
+     * older or duplicate ones through {@link #apply(TaskEvent)}.
+     *
+     * @param state    persisted lifecycle state
+     * @param version  last applied event version
+     * @param progress persisted progress, or {@code null} for no progress
+     * @param result   persisted result for {@code COMPLETED}, may be {@code null}
+     * @param error    persisted error for {@code FAILED}
+     */
+    synchronized void restore(TaskState state, long version, TaskProgress progress,
+                              R result, TaskError error) {
+        Objects.requireNonNull(state, "state");
+        if (state == TaskState.FAILED) Objects.requireNonNull(error, "A failed task requires an error");
+        this.version = version;
+        this.progress = progress == null ? TaskProgress.NONE : progress;
+        this.state.set(state);
+
+        switch (state) {
+            case COMPLETED -> this.result.complete(result);
+            case FAILED -> this.result.completeExceptionally(new TaskFailedException(error));
+            case CANCELLED -> this.result.cancel(false);
+            default -> { }
+        }
+    }
+
     void failLocally(Throwable t) { result.completeExceptionally(t); }
 }

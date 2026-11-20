@@ -4,13 +4,13 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.reflect.Constructor;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 
@@ -43,7 +43,7 @@ class ContractDriftTest {
     private final TaskCodec codec = new TaskCodec(tasks, results, mapper);
 
     @Test
-    void everyTaskHasAFixtureAndReencodesToTheSamePayload() throws Exception {
+    void everyTaskCanBeReconstructedFromItsFixtureAndReencoded() throws Exception {
         for (TaskMeta meta : tasks.all()) {
             MessageDto fixture = readTaskFixture(meta.type());
 
@@ -52,9 +52,11 @@ class ContractDriftTest {
             assertEquals(1, fixture.schemaVersion(), meta.type() + " fixture schemaVersion");
             assertNotNull(fixture.payload(), meta.type() + " fixture payload");
 
-            AbstractTask<?> task = instantiate(meta, fixture.payload());
+            AbstractTask<?> task = instantiate(meta, fixture.messageId(), fixture.payload());
             MessageDto encoded = codec.encode(task);
 
+            assertEquals(fixture.messageId(), task.id(), meta.type() + " reconstructed id");
+            assertEquals(fixture.messageId(), encoded.messageId(), meta.type() + " encoded id");
             assertEquals("task", encoded.kind(), meta.type() + " encoded kind");
             assertEquals(meta.type(), encoded.type(), meta.type() + " encoded type");
             assertEquals(1, encoded.schemaVersion(), meta.type() + " encoded schemaVersion");
@@ -104,29 +106,20 @@ class ContractDriftTest {
         return mapper.readValue(readFixture("event.completed." + taskType + ".json"), EventDto.class);
     }
 
-    private AbstractTask<?> instantiate(TaskMeta meta, Map<String, Object> payload) throws Exception {
+    private AbstractTask<?> instantiate(TaskMeta meta, UUID id, Map<String, Object> payload) throws Exception {
         List<TaskMeta.Param> params = meta.params();
-        Class<?>[] types = new Class<?>[params.size()];
-        Object[] args = new Object[params.size()];
+        Object[] args = new Object[params.size() + 1];
+        args[0] = id;
 
         for (int i = 0; i < params.size(); i++) {
             TaskMeta.Param param = params.get(i);
             assertTrue(payload.containsKey(param.name()),
                     "Missing \"" + param.name() + "\" in fixture for " + meta.type());
-            types[i] = param.field().getType();
-            args[i] = mapper.convertValue(payload.get(param.name()),
+            args[i + 1] = mapper.convertValue(payload.get(param.name()),
                     mapper.constructType(param.field().getGenericType()));
         }
 
-        Constructor<?> constructor;
-        try {
-            constructor = meta.taskClass().getDeclaredConstructor(types);
-        } catch (NoSuchMethodException e) {
-            throw new AssertionError(meta.type()
-                    + " needs a constructor taking its @Property fields in declaration order", e);
-        }
-        constructor.setAccessible(true);
-        return (AbstractTask<?>) constructor.newInstance(args);
+        return meta.constructor().newInstance(args);
     }
 
     private void assertSameJson(String name) throws Exception {

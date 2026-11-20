@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static ru.astrosoup.mineberries.messaging.fixtures.MessagingFixtures.*;
 
 import java.util.List;
+import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 
@@ -80,8 +81,21 @@ class MetaRegistryTest {
     @Test
     void taskPropertiesIncludeSuperclassAndCustomNames() {
         assertEquals(List.of("name", "count"), names(tasks.require(GreetTask.class).params()));
-        assertTrue(names(tasks.require(LabelTask.class).params()).containsAll(List.of("owner", "label")));
-        assertEquals(2, tasks.require(LabelTask.class).params().size());
+        assertEquals(List.of("label", "owner"), names(tasks.require(LabelTask.class).params()));
+    }
+
+    @Test
+    void reconstructionConstructorsSupportInheritedAndEmptyPayloads() throws ReflectiveOperationException {
+        var id = UUID.randomUUID();
+        var label = tasks.require(LabelTask.class).constructor().newInstance(id, "label", "owner");
+        var ping = tasks.require(PingTask.class).constructor().newInstance(id);
+        var codec = new TaskCodec(tasks, results, TaskCodec.defaultMapper());
+
+        assertEquals(id, label.id());
+        assertEquals("label", codec.encode(label).payload().get("label"));
+        assertEquals("owner", codec.encode(label).payload().get("owner"));
+        assertEquals(id, ping.id());
+        assertTrue(codec.encode(ping).payload().isEmpty());
     }
 
     @Test

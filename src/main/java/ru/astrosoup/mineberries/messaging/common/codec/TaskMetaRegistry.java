@@ -1,14 +1,17 @@
 package ru.astrosoup.mineberries.messaging.common.codec;
 
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider;
@@ -26,7 +29,8 @@ import ru.astrosoup.mineberries.messaging.common.annotations.*;
  *
  * <p>Registration validates the task hierarchy, resolves its result type, and
  * collects its {@link ru.astrosoup.mineberries.messaging.common.annotations.Property}
- * fields. Duplicate task type identifiers fail at startup.
+ * fields. Missing reconstruction constructors and duplicate task type
+ * identifiers fail at startup.
  */
 public final class TaskMetaRegistry {
     private final Map<Class<?>, TaskMeta> byClass = new HashMap<>();
@@ -68,7 +72,9 @@ public final class TaskMetaRegistry {
         if (result != Void.class && results.find(result).isEmpty())
             throw new IllegalStateException(clazz.getName() + ": result type " + result.getName() + " is not annotated with @Result");
 
-        var meta = new TaskMeta(type, (Class<? extends AbstractTask<?>>) clazz, result, collectProperties(clazz));
+        var taskClass = (Class<? extends AbstractTask<?>>) clazz;
+        var params = collectProperties(clazz);
+        var meta = new TaskMeta(type, taskClass, result, params, findConstructor(taskClass, params));
         TaskMeta prev = byType.putIfAbsent(type, meta);
         if (prev != null)
             throw new IllegalStateException("Duplicate @Task \"" + type + "\": " + prev.taskClass().getName() + " and " + clazz.getName());
@@ -92,6 +98,24 @@ public final class TaskMetaRegistry {
             }
         }
         return List.copyOf(params);
+    }
+
+    private static Constructor<? extends AbstractTask<?>> findConstructor(
+            Class<? extends AbstractTask<?>> taskClass, List<TaskMeta.Param> params) {
+        Class<?>[] types = new Class<?>[params.size() + 1];
+        types[0] = UUID.class;
+        for (int i = 0; i < params.size(); i++) {
+            types[i + 1] = params.get(i).field().getType();
+        }
+        try {
+            var constructor = taskClass.getConstructor(types);
+            constructor.setAccessible(true);
+            return constructor;
+        } catch (NoSuchMethodException e) {
+            throw new IllegalStateException(taskClass.getName()
+                    + ": @Task needs a public constructor with UUID first, followed by @Property fields: "
+                    + Arrays.toString(types), e);
+        }
     }
 
     private static Class<?> load(String name) {

@@ -1,6 +1,7 @@
 package ru.astrosoup.mineberries.messaging.banker.tasks;
 
 import java.math.BigDecimal;
+import java.util.UUID;
 
 import lombok.Getter;
 import ru.astrosoup.mineberries.messaging.banker.results.PaymentSentResult;
@@ -22,6 +23,11 @@ public class SendPayment extends AbstractTask<PaymentSentResult> {
     @Property private final BigDecimal amount;
 
     public SendPayment(String recipientNickname, BigDecimal amount) {
+        this(UUID.randomUUID(), recipientNickname, amount);
+    }
+
+    public SendPayment(UUID id, String recipientNickname, BigDecimal amount) {
+        super(id);
         this.recipientNickname = DomainPreconditions.nickname(recipientNickname, "recipientNickname");
         this.amount = DomainPreconditions.amount(amount, "amount");
     }

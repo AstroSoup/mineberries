@@ -1,5 +1,7 @@
 package ru.astrosoup.mineberries.messaging.courier.tasks;
 
+import java.util.UUID;
+
 import lombok.Getter;
 import ru.astrosoup.mineberries.messaging.common.AbstractTask;
 import ru.astrosoup.mineberries.messaging.common.annotations.Property;
@@ -35,6 +37,17 @@ public class DeliverOrder extends AbstractTask<DeliveryResult> {
             WorldPoint pickupContainer,
             WorldPoint dropoffPoint,
             WorldPoint dropoffContainer) {
+        this(UUID.randomUUID(), orderId, pickupPoint, pickupContainer, dropoffPoint, dropoffContainer);
+    }
+
+    public DeliverOrder(
+            UUID id,
+            long orderId,
+            WorldPoint pickupPoint,
+            WorldPoint pickupContainer,
+            WorldPoint dropoffPoint,
+            WorldPoint dropoffContainer) {
+        super(id);
         this.orderId = DomainPreconditions.positive(orderId, "orderId");
         this.pickupPoint = DomainPreconditions.nonNull(pickupPoint, "pickupPoint");
         this.pickupContainer = DomainPreconditions.nonNull(pickupContainer, "pickupContainer");

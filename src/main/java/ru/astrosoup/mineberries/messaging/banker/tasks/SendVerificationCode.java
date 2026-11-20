@@ -1,5 +1,7 @@
 package ru.astrosoup.mineberries.messaging.banker.tasks;
 
+import java.util.UUID;
+
 import lombok.Getter;
 import ru.astrosoup.mineberries.messaging.banker.results.VerificationCodeDeliveryResult;
 import ru.astrosoup.mineberries.messaging.common.AbstractTask;
@@ -20,6 +22,11 @@ public class SendVerificationCode extends AbstractTask<VerificationCodeDeliveryR
     @Property private final String code;
 
     public SendVerificationCode(String nickname, String code) {
+        this(UUID.randomUUID(), nickname, code);
+    }
+
+    public SendVerificationCode(UUID id, String nickname, String code) {
+        super(id);
         this.nickname = DomainPreconditions.nickname(nickname, "nickname");
         this.code = DomainPreconditions.text(code, "code");
     }

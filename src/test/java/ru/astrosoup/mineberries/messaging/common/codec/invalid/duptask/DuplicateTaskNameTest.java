@@ -2,6 +2,8 @@ package ru.astrosoup.mineberries.messaging.common.codec.invalid.duptask;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.util.UUID;
+
 import org.junit.jupiter.api.Test;
 
 import ru.astrosoup.mineberries.messaging.common.AbstractTask;
@@ -15,8 +17,13 @@ import ru.astrosoup.mineberries.messaging.common.codec.TaskMetaRegistry;
  */
 class DuplicateTaskNameTest {
 
-    @Task("dup") static class First extends AbstractTask<Void> {}
-    @Task("dup") static class Second extends AbstractTask<Void> {}
+    @Task("dup") static class First extends AbstractTask<Void> {
+        public First(UUID id) { super(id); }
+    }
+
+    @Task("dup") static class Second extends AbstractTask<Void> {
+        public Second(UUID id) { super(id); }
+    }
 
     @Test
     void duplicateTaskNamesFailAtStartup() {

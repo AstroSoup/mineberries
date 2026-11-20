@@ -1,6 +1,7 @@
 package ru.astrosoup.mineberries.messaging.banker.tasks;
 
 import java.math.BigDecimal;
+import java.util.UUID;
 
 import lombok.Getter;
 import ru.astrosoup.mineberries.messaging.banker.results.PaymentCollectedResult;
@@ -24,6 +25,11 @@ public class CollectPayment extends AbstractTask<PaymentCollectedResult> {
     @Property private final int timeoutSeconds;
 
     public CollectPayment(String payerNickname, BigDecimal amount, int timeoutSeconds) {
+        this(UUID.randomUUID(), payerNickname, amount, timeoutSeconds);
+    }
+
+    public CollectPayment(UUID id, String payerNickname, BigDecimal amount, int timeoutSeconds) {
+        super(id);
         this.payerNickname = DomainPreconditions.nickname(payerNickname, "payerNickname");
         this.amount = DomainPreconditions.amount(amount, "amount");
         this.timeoutSeconds = DomainPreconditions.positive(timeoutSeconds, "timeoutSeconds");

@@ -1,6 +1,7 @@
 package ru.astrosoup.mineberries.messaging.supervisor.tasks;
 
 import java.util.List;
+import java.util.UUID;
 
 import lombok.Getter;
 import ru.astrosoup.mineberries.messaging.common.AbstractTask;
@@ -29,6 +30,11 @@ public class LoadCourierParcel extends AbstractTask<CourierParcelLoadResult> {
             long warehouseId,
             WorldPoint parcelPoint,
             List<ItemAmount> items) {
+        this(UUID.randomUUID(), warehouseId, parcelPoint, items);
+    }
+
+    public LoadCourierParcel(UUID id, long warehouseId, WorldPoint parcelPoint, List<ItemAmount> items) {
+        super(id);
         this.warehouseId = DomainPreconditions.positive(warehouseId, "warehouseId");
         this.parcelPoint = DomainPreconditions.nonNull(parcelPoint, "parcelPoint");
         this.items = DomainPreconditions.nonEmpty(items, "items");
