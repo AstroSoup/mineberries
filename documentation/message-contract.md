@@ -38,6 +38,10 @@ Cancel rows use `cancel` as their stored `type`; the cancel JSON still has no `t
 field. Enqueueing completes when the row is written, not when the transaction commits or
 RabbitMQ confirms publication.
 
+When A submits a task, it stores the new task and enqueues its message in the same
+business transaction. The task becomes active in memory only after commit. An enqueue
+failure aborts the submission transaction; it is not a `FAILED` event from B.
+
 ## 2. Common conventions
 
 - **`messageId`** is a UUID. The producer creates it once and reuses it on every retry or

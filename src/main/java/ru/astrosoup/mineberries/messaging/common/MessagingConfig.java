@@ -4,11 +4,14 @@ package ru.astrosoup.mineberries.messaging.common;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.transaction.PlatformTransactionManager;
 import ru.astrosoup.mineberries.messaging.common.codec.TaskCodec;
 import ru.astrosoup.mineberries.messaging.common.broker.EventSource;
 import ru.astrosoup.mineberries.messaging.common.broker.MessageSender;
 import ru.astrosoup.mineberries.messaging.common.codec.ResultMetaRegistry;
 import ru.astrosoup.mineberries.messaging.common.codec.TaskMetaRegistry;
+import ru.astrosoup.mineberries.messaging.tasks.TaskRepository;
+import tools.jackson.databind.ObjectMapper;
 
 /** Spring configuration for the messaging registries, codec, and task manager. */
 @Configuration
@@ -21,7 +24,8 @@ public class MessagingConfig {
 
 
 
-    @Bean TaskManager taskManager(MessageSender sender, EventSource events, TaskCodec codec) {
-        return new TaskManager(sender, events, codec);
+    @Bean TaskManager taskManager(MessageSender sender, EventSource events, TaskCodec codec,
+                                  TaskRepository tasks, ObjectMapper mapper, PlatformTransactionManager transactionManager) {
+        return new TaskManager(sender, events, codec, tasks, mapper, transactionManager);
     }
 }

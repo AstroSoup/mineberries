@@ -81,13 +81,17 @@ class TaskManagerTest {
     }
 
     @Test
-    void sendFailureFailsTheTask() {
-        var boom = new IllegalStateException("broker down");
+    void sendFailureThrowsFromSubmitAndDoesNotSettleTheTaskResult() {
+        var boom = new IllegalStateException("enqueue failed");
         broker.failNextSend(boom);
+        var task = payment("seller", "900.00");
 
-        var task = manager.submit(payment("seller", "900.00"));
+        assertSame(boom, assertThrows(IllegalStateException.class, () -> manager.submit(task)));
+        assertFalse(task.result().isDone());
+        assertTrue(broker.sent().isEmpty());
 
-        assertSame(boom, failureOf(task.result()));
+        assertSame(task, manager.submit(task));
+        assertEquals(1, broker.sent().size());
     }
 
     // ---- lifecycle ----

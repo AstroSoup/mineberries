@@ -10,6 +10,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.jdbc.core.RowMapper;
+import org.springframework.jdbc.core.SqlTypeValue;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
@@ -82,7 +83,9 @@ public class TaskRepository {
                 """)
                 .param(1, task.taskId())
                 .param(2, task.type())
-                .param(3, task.payload())
+                // Bind without exposing the payload to Spring's parameter TRACE logging.
+                .param(3, (SqlTypeValue) (statement, index, sqlType, typeName) ->
+                        statement.setString(index, task.payload()))
                 .param(4, TaskState.NEW.name())
                 .param(5, timestamp(task.expiresAt()))
                 .param(6, timestamp(task.acceptBy()))

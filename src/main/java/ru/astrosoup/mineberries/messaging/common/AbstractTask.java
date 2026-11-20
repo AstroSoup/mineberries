@@ -67,6 +67,16 @@ public abstract class AbstractTask<R> {
         return null;
     }
 
+    /** Optional local deadline for the bot to accept this task. */
+    public Instant acceptBy() {
+        return null;
+    }
+
+    /** Optional local deadline for the bot to finish this task. */
+    public Instant finishBy() {
+        return null;
+    }
+
     // public methods
     public void onProgress(Consumer<TaskProgress> listener) {
         progressListeners.add(listener);

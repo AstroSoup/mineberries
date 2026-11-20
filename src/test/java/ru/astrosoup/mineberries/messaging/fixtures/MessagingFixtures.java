@@ -71,14 +71,27 @@ public final class MessagingFixtures {
     @Task("expiring")
     public static class ExpiringTask extends AbstractTask<Void> {
         private final Instant expiresAt;
+        private final Instant acceptBy;
+        private final Instant finishBy;
 
-        public ExpiringTask(Instant expiresAt) { this(UUID.randomUUID(), expiresAt); }
-        public ExpiringTask(UUID id) { this(id, null); }
+        public ExpiringTask(Instant expiresAt) { this(UUID.randomUUID(), expiresAt, null, null); }
+        public ExpiringTask(UUID id) { this(id, null, null, null); }
 
-        private ExpiringTask(UUID id, Instant expiresAt) { super(id); this.expiresAt = expiresAt; }
+        public ExpiringTask(UUID id, Instant expiresAt, Instant acceptBy, Instant finishBy) {
+            super(id);
+            this.expiresAt = expiresAt;
+            this.acceptBy = acceptBy;
+            this.finishBy = finishBy;
+        }
 
         @Override
         public Instant expiresAt() { return expiresAt; }
+
+        @Override
+        public Instant acceptBy() { return acceptBy; }
+
+        @Override
+        public Instant finishBy() { return finishBy; }
     }
 
     @Task("timed")
