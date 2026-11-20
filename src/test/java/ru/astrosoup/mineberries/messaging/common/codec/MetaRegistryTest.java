@@ -106,7 +106,7 @@ class MetaRegistryTest {
 
     @Test
     void allListsEveryTask() {
-        assertEquals(5, tasks.all().size()); // Greet, Ping, Ack, Label, Expiring
+        assertEquals(6, tasks.all().size()); // Greet, Ping, Ack, Label, Expiring, Timed
     }
 
     // ---- application tasks ----

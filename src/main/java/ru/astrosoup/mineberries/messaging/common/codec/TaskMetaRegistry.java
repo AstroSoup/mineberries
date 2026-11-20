@@ -52,6 +52,13 @@ public final class TaskMetaRegistry {
     public TaskMeta require(Class<?> taskClass) {
         return find(taskClass).orElseThrow(() -> new IllegalArgumentException("Not a registered task: " + taskClass.getName()));
     }
+
+    TaskMeta requireType(String type) {
+        var meta = byType.get(type);
+        if (meta == null) throw new IllegalArgumentException("Unknown task type: " + type);
+        return meta;
+    }
+
     public Collection<TaskMeta> all() { return List.copyOf(byClass.values()); }
 
     @SuppressWarnings("unchecked")

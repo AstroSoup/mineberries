@@ -81,6 +81,20 @@ public final class MessagingFixtures {
         public Instant expiresAt() { return expiresAt; }
     }
 
+    @Task("timed")
+    public static class TimedTask extends AbstractTask<Void> {
+        public enum Mode { START, STOP }
+
+        @Property private final Instant scheduledAt;
+        @Property private final Mode mode;
+
+        public TimedTask(UUID id, Instant scheduledAt, Mode mode) {
+            super(id);
+            this.scheduledAt = scheduledAt;
+            this.mode = mode;
+        }
+    }
+
     @Result
     public static class AckResult {}
 

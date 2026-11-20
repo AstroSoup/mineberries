@@ -150,6 +150,87 @@ class TaskCodecTest {
                 () -> new DeliverOrder(0L, WAREHOUSE, PARCEL, DROPOFF, null));
     }
 
+    // ---- decode: stored tasks ----
+
+    @Test
+    void restoresTheSuppliedIdAndUsesMetadataPropertyNamesAndOrder() {
+        var greeting = codec.decodeTask("greet", id, Map.of("count", 3, "name", "buyer"));
+        var label = codec.decodeTask("owned", id, Map.of("owner", "bob", "label", "urgent"));
+        var ping = codec.decodeTask("PingTask", id, Map.of());
+
+        assertInstanceOf(GreetTask.class, greeting);
+        assertEquals(id, greeting.id());
+        assertEquals(Map.of("name", "buyer", "count", 3), codec.encode(greeting).payload());
+        assertInstanceOf(LabelTask.class, label);
+        assertEquals(Map.of("owner", "bob", "label", "urgent"), codec.encode(label).payload());
+        assertInstanceOf(PingTask.class, ping);
+        assertEquals(id, ping.id());
+    }
+
+    @Test
+    void decodesInstantAndEnumProperties() {
+        var when = Instant.parse("2026-11-19T09:02:00.123456789Z");
+        var meta = tasks.require(TimedTask.class);
+        var original = new TimedTask(id, when, TimedTask.Mode.STOP);
+        var encoded = codec.encode(original);
+        var fromStorage = codec.decodeTask("timed", id, Map.of("scheduledAt", when.toString(), "mode", "STOP"));
+        var roundTripped = codec.decodeTask(encoded.type(), encoded.messageId(), encoded.payload());
+
+        for (var param : meta.params()) {
+            assertEquals(param.get(original), param.get(fromStorage), param.name());
+            assertEquals(param.get(original), param.get(roundTripped), param.name());
+        }
+    }
+
+    @Test
+    void acceptsExplicitNullAndIgnoresUnknownFields() {
+        var encoded = codec.encode(new DeliverOrder(42L, WAREHOUSE, PARCEL, DROPOFF, null));
+        var payload = new HashMap<>(encoded.payload());
+        var pickup = new HashMap<>(pointMap(WAREHOUSE));
+        pickup.put("extra", "ignored");
+        payload.put("pickupPoint", pickup);
+        payload.put("extra", "ignored");
+
+        var task = assertInstanceOf(DeliverOrder.class, codec.decodeTask(encoded.type(), id, payload));
+
+        assertEquals(WAREHOUSE, task.getPickupPoint());
+        assertNull(task.getDropoffContainer());
+    }
+
+    @Test
+    void rejectsUnknownStoredTaskType() {
+        var ex = assertThrows(IllegalArgumentException.class, () -> codec.decodeTask("not.registered", id, Map.of()));
+        assertEquals("Unknown task type: not.registered", ex.getMessage());
+    }
+
+    @Test
+    void rejectsMissingTaskPropertyEvenIfItCanBeNull() {
+        var encoded = codec.encode(new DeliverOrder(42L, WAREHOUSE, PARCEL, DROPOFF, null));
+        var payload = new HashMap<>(encoded.payload());
+        payload.remove("dropoffContainer");
+
+        var ex = assertThrows(IllegalArgumentException.class, () -> codec.decodeTask(encoded.type(), id, payload));
+        assertEquals("Missing property \"dropoffContainer\" for task courier.deliver_order", ex.getMessage());
+    }
+
+    @Test
+    void rejectsAnUnconvertiblePropertyWithoutExposingItsValue() {
+        var ex = assertThrows(IllegalArgumentException.class, () -> codec.decodeTask("banker.send_payment", id,
+                Map.of("recipientNickname", "seller", "amount", "not-a-number")));
+
+        assertEquals("Invalid property \"amount\" for task banker.send_payment", ex.getMessage());
+        assertNull(ex.getCause());
+    }
+
+    @Test
+    void rejectsPayloadThatFailsTaskConstructorValidation() {
+        var ex = assertThrows(IllegalArgumentException.class, () -> codec.decodeTask("banker.send_payment", id,
+                Map.of("recipientNickname", "seller", "amount", new BigDecimal("1.001"))));
+
+        assertEquals("Invalid payload for task banker.send_payment: constructor validation failed", ex.getMessage());
+        assertNull(ex.getCause());
+    }
+
     // ---- decode: non-result events ----
 
     @Test

@@ -10,11 +10,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 
-import ru.astrosoup.mineberries.messaging.common.AbstractTask;
 import ru.astrosoup.mineberries.messaging.common.EventType;
 import ru.astrosoup.mineberries.messaging.common.TaskEvent;
 import ru.astrosoup.mineberries.messaging.common.dtos.EventDto;
@@ -43,7 +41,7 @@ class ContractDriftTest {
     private final TaskCodec codec = new TaskCodec(tasks, results, mapper);
 
     @Test
-    void everyTaskCanBeReconstructedFromItsFixtureAndReencoded() throws Exception {
+    void everyTaskFixtureRoundTripsThroughTheCodec() throws Exception {
         for (TaskMeta meta : tasks.all()) {
             MessageDto fixture = readTaskFixture(meta.type());
 
@@ -52,7 +50,7 @@ class ContractDriftTest {
             assertEquals(1, fixture.schemaVersion(), meta.type() + " fixture schemaVersion");
             assertNotNull(fixture.payload(), meta.type() + " fixture payload");
 
-            AbstractTask<?> task = instantiate(meta, fixture.messageId(), fixture.payload());
+            var task = codec.decodeTask(fixture.type(), fixture.messageId(), fixture.payload());
             MessageDto encoded = codec.encode(task);
 
             assertEquals(fixture.messageId(), task.id(), meta.type() + " reconstructed id");
@@ -61,6 +59,13 @@ class ContractDriftTest {
             assertEquals(meta.type(), encoded.type(), meta.type() + " encoded type");
             assertEquals(1, encoded.schemaVersion(), meta.type() + " encoded schemaVersion");
             assertJsonEquals(fixture.payload(), encoded.payload(), meta.type() + " payload");
+
+            var decoded = codec.decodeTask(encoded.type(), encoded.messageId(), encoded.payload());
+            assertEquals(task.getClass(), decoded.getClass());
+            assertEquals(task.id(), decoded.id());
+            for (TaskMeta.Param param : meta.params()) {
+                assertEquals(param.get(task), param.get(decoded), meta.type() + "." + param.name());
+            }
 
             if (meta.resultClass() != Void.class)
                 readFixture("event.completed." + meta.type() + ".json");
@@ -104,22 +109,6 @@ class ContractDriftTest {
 
     private EventDto readEventFixture(String taskType) throws Exception {
         return mapper.readValue(readFixture("event.completed." + taskType + ".json"), EventDto.class);
-    }
-
-    private AbstractTask<?> instantiate(TaskMeta meta, UUID id, Map<String, Object> payload) throws Exception {
-        List<TaskMeta.Param> params = meta.params();
-        Object[] args = new Object[params.size() + 1];
-        args[0] = id;
-
-        for (int i = 0; i < params.size(); i++) {
-            TaskMeta.Param param = params.get(i);
-            assertTrue(payload.containsKey(param.name()),
-                    "Missing \"" + param.name() + "\" in fixture for " + meta.type());
-            args[i + 1] = mapper.convertValue(payload.get(param.name()),
-                    mapper.constructType(param.field().getGenericType()));
-        }
-
-        return meta.constructor().newInstance(args);
     }
 
     private void assertSameJson(String name) throws Exception {

@@ -2,6 +2,7 @@ package ru.astrosoup.mineberries.messaging.common.codec;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.UUID;
 
 import ru.astrosoup.mineberries.messaging.common.AbstractTask;
 import ru.astrosoup.mineberries.messaging.common.TaskError;
@@ -13,7 +14,8 @@ import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * Converts tasks to broker messages and broker events back to task events.
+ * Converts tasks to broker messages, reconstructs tasks from stored payloads,
+ * and decodes broker events.
  *
  * <p>Encoding uses the registered {@link TaskMeta}; decoding resolves the
  * result class through the {@link ResultMetaRegistry}.
@@ -42,6 +44,17 @@ public final class TaskCodec {
             payload.put(p.name(), v == null ? null : mapper.convertValue(v, Object.class));
         }
         return new MessageDto(task.id(), TASK_KIND, meta.type(), SCHEMA_VERSION, task.expiresAt(), payload);
+    }
+
+    /**
+     * Reconstructs a task with its original ID and payload properties.
+     * This does not restore lifecycle state or metadata outside the payload.
+     *
+     * @throws IllegalArgumentException if the type is unknown, the ID is missing,
+     *                                  or the payload is missing or invalid
+     */
+    public AbstractTask<?> decodeTask(String type, UUID id, Map<String, Object> payload) {
+        return registry.requireType(type).create(id, payload, mapper);
     }
 
     public TaskEvent<Object> decode(Class<?> taskClass, EventDto dto) {
