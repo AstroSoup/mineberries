@@ -1,0 +1,47 @@
+{
+  "vhosts": [
+    {
+      "name": "${RABBITMQ_VHOST}"
+    }
+  ],
+  "users": [
+    {
+      "name": "${RABBITMQ_ADMIN_USER}",
+      "password": "${RABBITMQ_ADMIN_PASSWORD}",
+      "tags": ["administrator"]
+    },
+    {
+      "name": "${RABBITMQ_APP_USER}",
+      "password": "${RABBITMQ_APP_PASSWORD}",
+      "tags": []
+    },
+    {
+      "name": "${RABBITMQ_BOT_USER}",
+      "password": "${RABBITMQ_BOT_PASSWORD}",
+      "tags": []
+    }
+  ],
+  "permissions": [
+    {
+      "user": "${RABBITMQ_ADMIN_USER}",
+      "vhost": "${RABBITMQ_VHOST}",
+      "configure": ".*",
+      "write": ".*",
+      "read": ".*"
+    },
+    {
+      "user": "${RABBITMQ_APP_USER}",
+      "vhost": "${RABBITMQ_VHOST}",
+      "configure": ".*",
+      "write": ".*",
+      "read": ".*"
+    },
+    {
+      "user": "${RABBITMQ_BOT_USER}",
+      "vhost": "${RABBITMQ_VHOST}",
+      "configure": ".*",
+      "write": ".*",
+      "read": ".*"
+    }
+  ]
+}

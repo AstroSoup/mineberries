@@ -1,0 +1,65 @@
+name: mineberries
+
+services:
+  postgres:
+    image: postgres:18
+    container_name: mineberries-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_ADMIN_DB:?set POSTGRES_ADMIN_DB in .env}
+      POSTGRES_USER: ${POSTGRES_ADMIN_USER:?set POSTGRES_ADMIN_USER in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_ADMIN_PASSWORD:?set POSTGRES_ADMIN_PASSWORD in .env}
+      APP_DB_NAME: ${APP_DB_NAME:?set APP_DB_NAME in .env}
+      APP_DB_USER: ${APP_DB_USER:?set APP_DB_USER in .env}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:?set APP_DB_PASSWORD in .env}
+      BOT_DB_NAME: ${BOT_DB_NAME:?set BOT_DB_NAME in .env}
+      BOT_DB_USER: ${BOT_DB_USER:?set BOT_DB_USER in .env}
+      BOT_DB_PASSWORD: ${BOT_DB_PASSWORD:?set BOT_DB_PASSWORD in .env}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      # PostgreSQL 18 stores its cluster under a version-specific directory
+      # below /var/lib/postgresql, so the named volume mounts at that level.
+      - postgres-data:/var/lib/postgresql
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  rabbitmq:
+    image: rabbitmq:4-management
+    container_name: mineberries-rabbitmq
+    hostname: mineberries-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_VHOST: ${RABBITMQ_VHOST:?set RABBITMQ_VHOST in .env}
+      RABBITMQ_ADMIN_USER: ${RABBITMQ_ADMIN_USER:?set RABBITMQ_ADMIN_USER in .env}
+      RABBITMQ_ADMIN_PASSWORD: ${RABBITMQ_ADMIN_PASSWORD:?set RABBITMQ_ADMIN_PASSWORD in .env}
+      RABBITMQ_APP_USER: ${RABBITMQ_APP_USER:?set RABBITMQ_APP_USER in .env}
+      RABBITMQ_APP_PASSWORD: ${RABBITMQ_APP_PASSWORD:?set RABBITMQ_APP_PASSWORD in .env}
+      RABBITMQ_BOT_USER: ${RABBITMQ_BOT_USER:?set RABBITMQ_BOT_USER in .env}
+      RABBITMQ_BOT_PASSWORD: ${RABBITMQ_BOT_PASSWORD:?set RABBITMQ_BOT_PASSWORD in .env}
+    entrypoint: ["/bin/sh", "/opt/mineberries/render-and-start.sh"]
+    command: ["rabbitmq-server"]
+    ports:
+      - "127.0.0.1:${RABBITMQ_AMQP_PORT:-5672}:5672"
+      - "127.0.0.1:${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+      - ./docker/rabbitmq/render-and-start.sh:/opt/mineberries/render-and-start.sh:ro
+      - ./docker/rabbitmq/render-definitions.pl:/opt/mineberries/render-definitions.pl:ro
+      - ./docker/rabbitmq/definitions.template.json:/opt/mineberries/definitions.template.json:ro
+      - ./docker/rabbitmq/rabbitmq.conf:/etc/rabbitmq/conf.d/90-mineberries.conf:ro
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 20s
+
+volumes:
+  postgres-data:
+  rabbitmq-data:

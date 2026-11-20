@@ -5,6 +5,11 @@ build/
 !**/src/main/**/build/
 !**/src/test/**/build/
 
+# local environment and credentials
+.env
+.env.*
+!.env.example
+
 # node
 node_modules
 
