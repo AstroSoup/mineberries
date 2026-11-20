@@ -8,3 +8,6 @@ databaseChangeLog:
   - include:
       file: changes/03-routines.sql
       relativeToChangelogFile: true
+  - include:
+      file: changes/04-tasks.sql
+      relativeToChangelogFile: true
