@@ -32,6 +32,12 @@ Outgoing messages are written to a transactional outbox and published with publi
 confirms. A broker rejection therefore does not lose a committed task, and the same
 `messageId` survives every publish retry.
 
+Service A writes the complete wire message to `outbox.payload` in the caller's database
+transaction. The `message_id`, `kind`, and `type` columns are separate row metadata.
+Cancel rows use `cancel` as their stored `type`; the cancel JSON still has no `type`
+field. Enqueueing completes when the row is written, not when the transaction commits or
+RabbitMQ confirms publication.
+
 ## 2. Common conventions
 
 - **`messageId`** is a UUID. The producer creates it once and reuses it on every retry or

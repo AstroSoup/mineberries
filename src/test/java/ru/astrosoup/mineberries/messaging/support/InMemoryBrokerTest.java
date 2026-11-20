@@ -29,6 +29,13 @@ class InMemoryBrokerTest {
     }
 
     @Test
+    void recordsCancelsUsingTheSameMessageInterface() {
+        var task = message();
+        broker.sendCancel(task.messageId(), 1).join();
+        assertEquals(new MessageDto(task.messageId(), "cancel", null, 1, null, null), broker.lastSent());
+    }
+
+    @Test
     void lastSentFailsWhenNothingWasSent() {
         assertThrows(IllegalStateException.class, broker::lastSent);
     }
