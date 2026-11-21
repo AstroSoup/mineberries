@@ -4,7 +4,11 @@ import static org.junit.jupiter.api.Assertions.*;
 import static ru.astrosoup.mineberries.messaging.fixtures.MessagingFixtures.SCAN_PACKAGES;
 
 import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
+import java.time.InstantSource;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -17,6 +21,7 @@ import java.util.concurrent.CompletionException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.AfterEach;
@@ -25,6 +30,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
@@ -39,10 +45,13 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.transaction.support.TransactionTemplate;
 
 import ru.astrosoup.mineberries.integration.AbstractIntegrationTest;
+import ru.astrosoup.mineberries.messaging.banker.tasks.CollectPayment;
 import ru.astrosoup.mineberries.messaging.banker.tasks.SendPayment;
+import ru.astrosoup.mineberries.messaging.banker.tasks.SendVerificationCode;
 import ru.astrosoup.mineberries.messaging.common.codec.ResultMetaRegistry;
 import ru.astrosoup.mineberries.messaging.common.codec.TaskCodec;
 import ru.astrosoup.mineberries.messaging.common.codec.TaskMetaRegistry;
+import ru.astrosoup.mineberries.messaging.common.dtos.EventDto;
 import ru.astrosoup.mineberries.messaging.common.exceptions.TaskFailedException;
 import ru.astrosoup.mineberries.messaging.fixtures.MessagingFixtures.ExpiringTask;
 import ru.astrosoup.mineberries.messaging.outbox.OutboxMessageSender;
@@ -368,7 +377,8 @@ class TaskManagerIntegrationTest extends AbstractIntegrationTest {
         assertTrue(repository.markProcessed(processed.id()));
 
         var newEvents = new InMemoryBroker();
-        var restarted = new MessagingConfig().taskManager(outbox, newEvents, codec, repository, mapper, transactionManager, "5m");
+        var restarted = new MessagingConfig().taskManager(outbox, newEvents, codec, repository, mapper, transactionManager,
+                "5m", TaskDeadlines.defaults());
         assertEquals(Set.of(running.id(), queued.id()), taskIds(restarted.activeTasks()));
         var terminal = restarted.terminalUnprocessedTasks();
         assertEquals(Set.of(completed.id(), failed.id(), cancelled.id()), taskIds(terminal));
@@ -539,6 +549,207 @@ class TaskManagerIntegrationTest extends AbstractIntegrationTest {
             assertEquals(mapper.readTree("""
                     {"messageId":"%s","kind":"cancel","schemaVersion":1}
                     """.formatted(id)), mapper.readTree(messages.getFirst()));
+        }
+    }
+
+    @Nested
+    class Deadlines {
+        private final InMemoryBroker timedEvents = new InMemoryBroker();
+        private final Instant submittedAt = Instant.parse("2026-11-21T12:00:00Z");
+        private final AtomicReference<Instant> time = new AtomicReference<>(submittedAt);
+        private final InstantSource instantSource = time::get;
+        private final Clock clock = instantSource.withZone(ZoneOffset.UTC);
+        private final List<LateTaskCompletion> notices = new ArrayList<>();
+        private final Duration codeBuffer = Duration.ofMinutes(2);
+        private final Duration paymentBuffer = Duration.ofMinutes(5);
+        private final Duration cancelGrace = Duration.ofMinutes(2);
+        private final TaskDeadlines deadlines =
+                new TaskDeadlines(clock, codeBuffer, paymentBuffer, cancelGrace, event -> notices.add((LateTaskCompletion) event));
+
+        @ParameterizedTest
+        @CsvSource({
+                "false, -60,  -30, false", // On time.
+                "false,  60,   90, false", // Inside the buffer.
+                "false, 120,  121, false", // Inclusive end of the buffer.
+                "false, 121,  122, true",
+                "false, -60, 3600, false", // Delayed event, on-time result.
+                "true,  -60,  -30, false",
+                "true,   60,   90, false",
+                "true,  300,  301, false",
+                "true,  301,  302, true",
+                "true,  -60, 3600, false"
+        })
+        void comparesResultTimestampWithThePersistedDeadline(
+                boolean collectPayment, long resultOffset, long arrivalOffset, boolean late) {
+            var timed = timedManager(timedEvents, deadlines);
+            var task = collectPayment ? collection(id) : verification(id);
+            transaction.executeWithoutResult(status -> timed.submit(task));
+            var deadline = submittedAt.plusSeconds(collectPayment ? 900 : 120);
+            var resultAt = deadline.plusSeconds(resultOffset);
+            assertEquals(collectPayment ? null : deadline, stored(id).expiresAt());
+            assertEquals(collectPayment ? deadline : null, stored(id).finishBy());
+            var envelope = mapper.readTree(jdbc.sql("SELECT payload::text FROM outbox WHERE message_id = ?")
+                    .param(id).query(String.class).single());
+            assertEquals(deadline.toString(), envelope.path("expiresAt").asString());
+            if (collectPayment) assertEquals(900, envelope.path("payload").path("timeoutSeconds").asInt());
+
+            time.set(deadline.plusSeconds(arrivalOffset));
+            var completed = new EventDto(id, 0, EventType.COMPLETED, time.get(), collectPayment
+                    ? Map.of("payerNickname", "buyer", "amount", new BigDecimal("12.00"), "paidAt", resultAt.toString())
+                    : codeResult(resultAt));
+            transaction.executeWithoutResult(status -> {
+                timedEvents.publish(completed);
+                assertTrue(notices.isEmpty());
+                assertFalse(task.result().isDone());
+            });
+            timedEvents.publish(completed);
+
+            assertEquals(TaskState.COMPLETED, stored(id).state());
+            assertEquals(TaskState.COMPLETED, task.state());
+            assertNotNull(task.result().join());
+            assertEquals(late, stored(id).completedLate());
+            var limit = deadline.plus(collectPayment ? paymentBuffer : codeBuffer);
+            assertEquals(late ? List.of(new LateTaskCompletion(id, stored(id).type(), deadline, limit, resultAt))
+                    : List.of(), notices);
+        }
+
+        @Test
+        void rollsBackLateCompletionWithoutNotifyingAndUsesTheConfiguredBuffer() {
+            var timed = timedManager(timedEvents, new TaskDeadlines(clock, Duration.ZERO, paymentBuffer, cancelGrace,
+                    event -> notices.add((LateTaskCompletion) event)));
+            var task = transaction.execute(status -> timed.submit(verification(id)));
+            var completion = Events.completed(id, 0, codeResult(submittedAt.plusSeconds(121)));
+            time.set(submittedAt.plusSeconds(125));
+            transaction.executeWithoutResult(status -> {
+                timedEvents.publish(completion);
+                assertTrue(stored(id).completedLate());
+                status.setRollbackOnly();
+            });
+            assertEquals(TaskState.NEW, stored(id).state());
+            assertFalse(stored(id).completedLate());
+            assertFalse(task.result().isDone());
+            assertTrue(notices.isEmpty());
+            timedEvents.publish(completion);
+            assertTrue(stored(id).completedLate());
+            assertEquals(1, notices.size());
+        }
+
+        @Test
+        void watchdogCancelsOnlyTimedTasksAndFailsAfterGraceEvenAcrossRestart() {
+            var timed = timedManager(timedEvents, deadlines);
+            transaction.executeWithoutResult(status -> {
+                timed.submit(verification(id));
+                timed.submit(collection(otherId));
+            });
+            var untimed = transaction.execute(status -> timed.submit(payment(testId())));
+
+            time.set(submittedAt.plus(Duration.ofMinutes(4)));
+            timed.scanDeadlines();
+            assertEquals(0, cancelCount(id));
+            time.set(time.get().plusSeconds(1));
+            timed.scanDeadlines();
+            timed.scanDeadlines();
+            assertEquals(1, cancelCount(id));
+            assertEquals(time.get(), stored(id).cancelRequestedAt());
+            assertEquals(TaskState.NEW, stored(id).state());
+            assertEquals(0, cancelCount(otherId));
+
+            var newEvents = new InMemoryBroker();
+            var restarted = timedManager(newEvents, deadlines);
+            var recovered = taskWithId(restarted.activeTasks(), id);
+            var recoveredPayment = taskWithId(restarted.activeTasks(), otherId);
+            time.set(time.get().plus(cancelGrace).minusSeconds(1));
+            restarted.scanDeadlines();
+            assertFalse(recovered.result().isDone());
+            time.set(time.get().plusSeconds(1));
+            restarted.scanDeadlines();
+            assertTimedOut(recovered);
+            assertEquals(-1, stored(id).lastEventVersion());
+            newEvents.publish(Events.completed(id, 0, codeResult(submittedAt.plusSeconds(30))));
+            assertEquals(TaskState.FAILED, stored(id).state());
+            assertEquals(1, cancelCount(id));
+
+            time.set(submittedAt.plusSeconds(20 * 60 + 1));
+            restarted.scanDeadlines();
+            assertEquals(1, cancelCount(otherId));
+            time.set(time.get().plus(cancelGrace));
+            restarted.scanDeadlines();
+            assertTimedOut(recoveredPayment);
+            assertEquals(TaskState.NEW, stored(untimed.id()).state());
+            assertEquals(0, cancelCount(untimed.id()));
+            assertTrue(notices.isEmpty());
+        }
+
+        @Test
+        void newerProgressExtendsGraceButDuplicateProgressDoesNot() {
+            var timed = timedManager(timedEvents, deadlines);
+            var task = transaction.execute(status -> timed.submit(verification(id)));
+            timedEvents.publish(Events.accepted(id, 0, "banker_bot"));
+
+            time.set(submittedAt.plusSeconds(241));
+            timed.scanDeadlines();
+            time.set(time.get().plusSeconds(90));
+            var progress = Events.progress(id, 1, "delivering");
+            timedEvents.publish(progress);
+            time.set(time.get().plusSeconds(60));
+            timedEvents.publish(progress);
+            timed.scanDeadlines();
+            assertEquals(TaskState.ACCEPTED, task.state());
+            assertFalse(task.result().isDone());
+            time.set(time.get().plusSeconds(60));
+            timed.scanDeadlines();
+            assertTimedOut(task);
+            assertEquals(1, stored(id).lastEventVersion());
+            assertEquals("delivering", task.progress().stage());
+            assertEquals(1, cancelCount(id));
+        }
+
+        @Test
+        void completionDuringCancellationGraceWinsAndUsesTheResultTime() {
+            var timed = timedManager(timedEvents, deadlines);
+            var task = transaction.execute(status -> timed.submit(verification(id)));
+            time.set(submittedAt.plusSeconds(241));
+            timed.scanDeadlines();
+            timedEvents.publish(Events.completed(id, 0, codeResult(submittedAt.plusSeconds(10))));
+            time.set(time.get().plus(cancelGrace));
+            timed.scanDeadlines();
+            assertEquals(TaskState.COMPLETED, task.state());
+            assertEquals(submittedAt.plusSeconds(10), task.result().join().deliveredAt());
+            assertFalse(stored(id).completedLate());
+            assertEquals(1, cancelCount(id));
+            assertTrue(notices.isEmpty());
+        }
+
+        private TaskManager timedManager(InMemoryBroker source, TaskDeadlines policy) {
+            return new TaskManager(outbox, source, codec, repository, mapper, transactionManager,
+                    Duration.ofMinutes(5), policy);
+        }
+
+        private void assertTimedOut(AbstractTask<?> task) {
+            assertEquals(TaskState.FAILED, stored(task.id()).state());
+            assertEquals(TaskState.FAILED, task.state());
+            var cause = assertThrows(CompletionException.class, task.result()::join).getCause();
+            var error = assertInstanceOf(TaskFailedException.class, cause).error();
+            assertTrue(error.outcomeUnknown());
+            assertFalse(error.retryable());
+            assertTrue(mapper.readTree(stored(task.id()).error()).path("outcomeUnknown").asBoolean());
+        }
+
+        private long cancelCount(UUID taskId) {
+            return jdbc.sql("SELECT count(*) FROM outbox WHERE message_id = ? AND kind = 'cancel'")
+                    .param(taskId).query(Long.class).single();
+        }
+
+        private Map<String, Object> codeResult(Instant deliveredAt) {
+            return Map.of("nickname", "buyer", "deliveredAt", deliveredAt.toString());
+        }
+
+        private SendVerificationCode verification(UUID taskId) {
+            return new SendVerificationCode(taskId, "buyer", "123456");
+        }
+
+        private CollectPayment collection(UUID taskId) {
+            return new CollectPayment(taskId, "buyer", new BigDecimal("12.00"), 900);
         }
     }
 

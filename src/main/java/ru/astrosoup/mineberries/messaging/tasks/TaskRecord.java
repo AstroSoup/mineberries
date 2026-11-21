@@ -24,6 +24,8 @@ import ru.astrosoup.mineberries.messaging.common.TaskState;
  * @param processedAt       time the continuation finished, or {@code null}
  * @param createdAt         creation time
  * @param updatedAt         last update time
+ * @param lastEventAt       local time the latest event was applied, or {@code null} if not recorded
+ * @param completedLate     whether the completed result exceeded its buffered deadline
  */
 public record TaskRecord(
         UUID taskId,
@@ -41,5 +43,7 @@ public record TaskRecord(
         Instant cancelRequestedAt,
         Instant processedAt,
         Instant createdAt,
-        Instant updatedAt) {
+        Instant updatedAt,
+        Instant lastEventAt,
+        boolean completedLate) {
 }

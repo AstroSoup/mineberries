@@ -17,3 +17,6 @@ databaseChangeLog:
   - include:
       file: changes/06-outbox-cleanup.sql
       relativeToChangelogFile: true
+  - include:
+      file: changes/07-task-deadlines.sql
+      relativeToChangelogFile: true

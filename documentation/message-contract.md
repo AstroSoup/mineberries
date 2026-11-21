@@ -341,13 +341,24 @@ Only two operations have deadlines:
 | Payment awaited from a player | 15 minutes | `paidAt` |
 
 A includes `expiresAt` on `banker.send_verification_code` and `banker.collect_payment`
-task messages. Other task types currently have no deadline and do not carry the field.
-For `collect_payment`, A also sets `timeoutSeconds` to `900`.
+task messages. A computes the deadline at submission and stores it in `expires_at`
+for a code or `finish_by` for a collected payment. All other task types have no
+deadline. For `collect_payment`, A sends `timeoutSeconds` of `900`.
 
-A checks the deadline against the timestamp inside the result (`deliveredAt` or `paidAt`)
-with a large configured buffer. It never uses the moment a `COMPLETED` event arrives as
-the basis for the deadline decision. This keeps the business decision independent of
-broker delays and redeliveries.
+A checks `deliveredAt` or `paidAt` against the deadline plus a configurable buffer
+(2 minutes for codes and 5 minutes for payments by default). The time the event
+arrives is not used for this decision. A result stamped after the buffered
+deadline still completes the task, sets `completed_late`, and publishes
+`LateTaskCompletion` as a local application event after commit. The flag is
+durable; the application event is not replayed on restart.
+
+For a timed task still active past its buffered deadline, A requests cancellation.
+If there is no further applied event within the configurable cancellation grace
+period (default 2 minutes), A marks the task locally `FAILED` with
+`outcomeUnknown=true` and `retryable=false`. The grace period starts no earlier
+than the buffered deadline and restarts when a newer event is applied. As with
+other terminal states, a task already failed locally is not reopened by later
+events.
 
 ## 7. Schema versions
 

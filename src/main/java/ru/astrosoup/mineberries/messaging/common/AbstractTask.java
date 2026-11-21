@@ -95,6 +95,11 @@ public abstract class AbstractTask<R> {
         applyNewEvent(event);
     }
 
+    /** Applies a durable local failure without inventing a bot event version. */
+    synchronized void applyCommittedFailure(long lastEventVersion, TaskProgress progress, TaskError error) {
+        if (!state().isTerminal()) restore(TaskState.FAILED, lastEventVersion, progress, null, error);
+    }
+
     private boolean canApply(TaskEvent<R> event) {
         return !state().isTerminal() && event.version() > version;
     }

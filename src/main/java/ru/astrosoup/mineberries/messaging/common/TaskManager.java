@@ -43,6 +43,8 @@ import tools.jackson.databind.ObjectMapper;
 @Slf4j
 public class TaskManager {
     private static final int CANCEL_SCHEMA_VERSION = 1;
+    private static final TaskError DEADLINE_FAILURE =
+            new TaskError("No bot outcome after the task deadline and cancellation grace period", false, true);
 
     private final MessageSender sender;
     private final TaskCodec codec;
@@ -50,10 +52,11 @@ public class TaskManager {
     private final Map<UUID, AbstractTask<?>> active = new ConcurrentHashMap<>();
     private final Set<UUID> localCancelRequests = ConcurrentHashMap.newKeySet();
     private final TaskContinuations continuations;
+    private final TaskDeadlines deadlines;
 
     /** Creates a non-persistent manager for in-memory tests. */
     public TaskManager(MessageSender sender, EventSource events, TaskCodec codec) {
-        this(sender, events, codec, null, new TaskContinuations(codec));
+        this(sender, events, codec, null, new TaskContinuations(codec), TaskDeadlines.defaults());
     }
 
     public TaskManager(MessageSender sender, EventSource events, TaskCodec codec,
@@ -64,17 +67,24 @@ public class TaskManager {
     TaskManager(MessageSender sender, EventSource events, TaskCodec codec,
                 TaskRepository tasks, ObjectMapper mapper, PlatformTransactionManager transactionManager,
                 Duration continuationGrace) {
+        this(sender, events, codec, tasks, mapper, transactionManager, continuationGrace, TaskDeadlines.defaults());
+    }
+
+    TaskManager(MessageSender sender, EventSource events, TaskCodec codec,
+                TaskRepository tasks, ObjectMapper mapper, PlatformTransactionManager transactionManager,
+                Duration continuationGrace, TaskDeadlines deadlines) {
         this(sender, events, codec, new Persistence(tasks, mapper, mandatoryTransaction(transactionManager),
                 new TransactionTemplate(transactionManager)),
-                new TaskContinuations(codec, tasks, mapper, transactionManager, continuationGrace));
+                new TaskContinuations(codec, tasks, mapper, transactionManager, continuationGrace), deadlines);
     }
 
     private TaskManager(MessageSender sender, EventSource events, TaskCodec codec, Persistence persistence,
-                        TaskContinuations continuations) {
+                        TaskContinuations continuations, TaskDeadlines deadlines) {
         this.sender = sender;
         this.codec = codec;
         this.persistence = persistence;
         this.continuations = continuations;
+        this.deadlines = deadlines;
         if (persistence != null) rehydrate();
         events.subscribe(this::onEvent);
     }
@@ -135,6 +145,47 @@ public class TaskManager {
         continuations.markExpiredUnownedTasks();
     }
 
+    @Scheduled(fixedDelayString = "${mineberries.messaging.deadlines.scan-interval:30s}")
+    void scanDeadlines() {
+        if (persistence == null) return;
+        var now = deadlines.now();
+        for (var id : persistence.tasks().listOverdueTimedTasks(now.minus(deadlines.codeBuffer()),
+                now.minus(deadlines.paymentBuffer()))) {
+            try {
+                persistence.taskTransaction().executeWithoutResult(status -> handleOverdueTask(id));
+            } catch (RuntimeException e) {
+                log.error("Could not apply deadline watchdog to task {}", id);
+            }
+        }
+    }
+
+    private void handleOverdueTask(UUID id) {
+        // Check again under the same row lock used by incoming events.
+        var row = persistence.tasks().findByIdForUpdate(id).orElse(null);
+        if (row == null || row.state().isTerminal()) return;
+        var limit = deadlines.bufferedDeadline(row);
+        var now = deadlines.now();
+        if (limit == null || !now.isAfter(limit)) return;
+        if (row.cancelRequestedAt() == null) {
+            requestDurableCancellation(id);
+        } else if (deadlines.cancelGraceElapsed(row, limit, now)) {
+            if (!persistence.tasks().failAfterDeadline(id, eventJson(DEADLINE_FAILURE))) {
+                throw new IllegalStateException("Could not fail overdue task " + id);
+            }
+            afterCommit(() -> applyCommittedDeadlineFailure(row));
+        }
+    }
+
+    private void applyCommittedDeadlineFailure(TaskRecord row) {
+        var task = activeTask(row.taskId());
+        if (task == null) {
+            continuations.storedTerminal(row.taskId());
+        } else {
+            task.applyCommittedFailure(row.lastEventVersion(), new TaskProgress(row.progressStage()), DEADLINE_FAILURE);
+            continuations.terminal(task);
+        }
+    }
+
     /**
      * Persists and enqueues a new task in the caller's transaction. The task starts
      * receiving events only after commit. Write failures throw from this method
@@ -144,13 +195,13 @@ public class TaskManager {
         if (!codec.supports(task.getClass()))
             throw new IllegalArgumentException("Unregistered task class: " + task.getClass().getName());
 
-        MessageDto dto = codec.encode(task);
+        var submission = deadlines.atSubmission(task, codec.encode(task));
         if (persistence != null) {
-            persistence.submissionTransaction().executeWithoutResult(status -> persistAndEnqueue(task, dto));
+            persistence.submissionTransaction().executeWithoutResult(status -> persistAndEnqueue(task, submission));
         } else {
             reserveActive(task);
             try {
-                awaitEnqueue(sender.send(dto));
+                awaitEnqueue(sender.send(submission.message()));
             } catch (RuntimeException | Error e) {
                 active.remove(task.id(), task);
                 throw e;
@@ -167,18 +218,19 @@ public class TaskManager {
      * the caller's transaction if present. Repeated requests, terminal tasks, and
      * tasks that have not been submitted do not enqueue a message.
      *
-     * <p>Only a terminal event from the bot settles the result; requesting
-     * cancellation does not cancel the future or change the task state.
+     * <p>Requesting cancellation does not cancel the future or change the task state.
      */
     public <R> CompletableFuture<R> cancel(AbstractTask<R> task) {
         if (persistence != null) {
-            persistence.taskTransaction().executeWithoutResult(status -> {
-                if (persistence.tasks().requestCancellation(task.id())) enqueueCancel(task.id());
-            });
+            persistence.taskTransaction().executeWithoutResult(status -> requestDurableCancellation(task.id()));
         } else {
             requestLocalCancellation(task.id());
         }
         return task.result();
+    }
+
+    private void requestDurableCancellation(UUID id) {
+        if (persistence.tasks().requestCancellation(id, deadlines.now())) enqueueCancel(id);
     }
 
     private void requestLocalCancellation(UUID id) {
@@ -199,8 +251,9 @@ public class TaskManager {
         awaitEnqueue(sender.sendCancel(id, CANCEL_SCHEMA_VERSION));
     }
 
-    private void persistAndEnqueue(AbstractTask<?> task, MessageDto dto) {
+    private void persistAndEnqueue(AbstractTask<?> task, TaskDeadlines.Submission submission) {
         if (active.containsKey(task.id())) throw duplicate(task.id());
+        MessageDto dto = submission.message();
         String payload;
         try {
             payload = persistence.mapper().writeValueAsString(dto.payload());
@@ -209,7 +262,7 @@ public class TaskManager {
         }
         try {
             persistence.tasks().insert(new NewTask(task.id(), dto.type(), payload,
-                    dto.expiresAt(), task.acceptBy(), task.finishBy()));
+                    submission.expiresAt(), task.acceptBy(), submission.finishBy()));
         } catch (DuplicateKeyException e) {
             throw duplicate(task.id());
         } catch (DataAccessException e) {
@@ -324,10 +377,23 @@ public class TaskManager {
         }
 
         var update = eventUpdate(task, event, dto);
-        if (!persistence.tasks().updateAfterEvent(task.taskId(), update)) {
+        var late = deadlines.lateCompletion(task, event);
+        if (!persistence.tasks().updateAfterEvent(task.taskId(), update, deadlines.now(), late != null)) {
             throw new IllegalStateException("Could not update task " + task.taskId());
         }
-        afterCommit(() -> applyCommittedEvent(task, event, update.state().isTerminal()));
+        afterCommit(() -> {
+            applyCommittedEvent(task, event, update.state().isTerminal());
+            if (late != null) publishLateCompletion(late);
+        });
+    }
+
+    private void publishLateCompletion(LateTaskCompletion late) {
+        try {
+            deadlines.events().publishEvent(late);
+        } catch (RuntimeException e) {
+            // The result and late flag have already committed; a notification cannot undo them.
+            log.error("Could not publish late completion for task {}", late.taskId());
+        }
     }
 
     private TaskUpdate eventUpdate(TaskRecord row, TaskEvent<Object> event, EventDto dto) {

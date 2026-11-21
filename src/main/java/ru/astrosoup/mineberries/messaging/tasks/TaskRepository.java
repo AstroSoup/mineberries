@@ -31,7 +31,7 @@ public class TaskRepository {
     private static final String COLUMNS =
             "task_id, type, payload, state, last_event_version, progress_stage, "
             + "assigned_bot, result, error, expires_at, accept_by, finish_by, "
-            + "cancel_requested_at, processed_at, created_at, updated_at";
+            + "cancel_requested_at, processed_at, created_at, updated_at, last_event_at, completed_late";
 
     private static final String SELECT_BY_ID_FOR_UPDATE =
             "SELECT " + COLUMNS + " FROM task WHERE task_id = ? FOR UPDATE";
@@ -61,7 +61,9 @@ public class TaskRepository {
             instant(row, "cancel_requested_at"),
             instant(row, "processed_at"),
             instant(row, "created_at"),
-            instant(row, "updated_at"));
+            instant(row, "updated_at"),
+            instant(row, "last_event_at"),
+            row.getBoolean("completed_late"));
 
     private final JdbcClient jdbc;
 
@@ -110,12 +112,13 @@ public class TaskRepository {
      *
      * @return {@code true} if the caller must enqueue a cancel message
      */
-    public boolean requestCancellation(UUID taskId) {
+    public boolean requestCancellation(UUID taskId, Instant requestedAt) {
         return jdbc.sql("""
                 UPDATE task
-                SET cancel_requested_at = statement_timestamp(), updated_at = statement_timestamp()
+                SET cancel_requested_at = ?, updated_at = statement_timestamp()
                 WHERE task_id = ? AND cancel_requested_at IS NULL AND state IN ('NEW', 'ACCEPTED')
                 """)
+                .param(timestamp(requestedAt))
                 .param(taskId)
                 .update() > 0;
     }
@@ -128,6 +131,11 @@ public class TaskRepository {
      * @return {@code true} when a row was updated
      */
     public boolean updateAfterEvent(UUID taskId, TaskUpdate update) {
+        return updateAfterEvent(taskId, update, Instant.now(), false);
+    }
+
+    /** Applies an event and records the local application time and late-completion flag. */
+    public boolean updateAfterEvent(UUID taskId, TaskUpdate update, Instant appliedAt, boolean completedLate) {
         return jdbc.sql("""
                 UPDATE task
                 SET state = ?,
@@ -136,7 +144,9 @@ public class TaskRepository {
                     assigned_bot = ?,
                     result = CAST(? AS jsonb),
                     error = CAST(? AS jsonb),
-                    updated_at = now()
+                    updated_at = statement_timestamp(),
+                    last_event_at = ?,
+                    completed_late = ?
                 WHERE task_id = ?
                 """)
                 .param(1, update.state().name())
@@ -145,7 +155,36 @@ public class TaskRepository {
                 .param(4, opaqueText(update.assignedBot()))
                 .param(5, opaqueText(update.result()))
                 .param(6, opaqueText(update.error()))
-                .param(7, taskId)
+                .param(7, timestamp(appliedAt))
+                .param(8, completedLate)
+                .param(9, taskId)
+                .update() > 0;
+    }
+
+    /** Finds active timed tasks beyond their respective buffered deadlines. */
+    public List<UUID> listOverdueTimedTasks(Instant codeCutoff, Instant paymentCutoff) {
+        return jdbc.sql("""
+                SELECT task_id FROM task
+                WHERE state IN ('NEW', 'ACCEPTED') AND (
+                    (type = 'banker.send_verification_code' AND expires_at < ?)
+                    OR (type = 'banker.collect_payment' AND finish_by < ?)
+                )
+                """)
+                .param(timestamp(codeCutoff))
+                .param(timestamp(paymentCutoff))
+                .query(UUID.class)
+                .list();
+    }
+
+    /** Records a local failure without advancing the bot's event version. Call with the row locked. */
+    public boolean failAfterDeadline(UUID taskId, String error) {
+        return jdbc.sql("""
+                UPDATE task
+                SET state = 'FAILED', error = CAST(? AS jsonb), updated_at = statement_timestamp()
+                WHERE task_id = ? AND state IN ('NEW', 'ACCEPTED')
+                """)
+                .param(opaqueText(error))
+                .param(taskId)
                 .update() > 0;
     }
 

@@ -145,6 +145,13 @@ Service A checks every minute for terminal tasks with no registered continuation
 startup and after a task becomes terminal for its owner to register.
 `mineberries.messaging.continuation-scan-interval` changes the check interval.
 
+Only verification codes and payments awaited from a player have deadlines. Configure
+`mineberries.messaging.deadlines.code-buffer` (default `2m`) and
+`mineberries.messaging.deadlines.payment-buffer` (default `5m`) to change how much
+time A allows beyond those deadlines. The watchdog uses
+`mineberries.messaging.deadlines.scan-interval` (default `30s`) and
+`mineberries.messaging.deadlines.cancel-grace` (default `2m`).
+
 ### Initialization and reset
 
 PostgreSQL runs `docker/postgres/init/10-create-service-databases.sh` only when

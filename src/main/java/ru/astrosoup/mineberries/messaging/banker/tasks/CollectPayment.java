@@ -20,9 +20,15 @@ import ru.astrosoup.mineberries.messaging.common.domain.DomainPreconditions;
 @Task("banker.collect_payment")
 @Getter
 public class CollectPayment extends AbstractTask<PaymentCollectedResult> {
+    public static final int PAYMENT_WINDOW_SECONDS = 15 * 60;
+
     @Property private final String payerNickname;
     @Property private final BigDecimal amount;
     @Property private final int timeoutSeconds;
+
+    public CollectPayment(String payerNickname, BigDecimal amount) {
+        this(payerNickname, amount, PAYMENT_WINDOW_SECONDS);
+    }
 
     public CollectPayment(String payerNickname, BigDecimal amount, int timeoutSeconds) {
         this(UUID.randomUUID(), payerNickname, amount, timeoutSeconds);
