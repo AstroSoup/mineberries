@@ -69,6 +69,14 @@ a later publish can deliver it again.
 Service A retains sent outbox rows for a configurable period (seven days by default).
 Cleanup uses `sent_at`, not creation time, and never deletes unsent rows.
 
+Service A validates incoming events against the event schema before invoking its
+subscribers. Invalid messages are rejected without requeue and go to `events.dlq`.
+Valid events are acknowledged only after the handler's database transaction commits.
+If handling or committing fails, A rejects the delivery with requeue so that it
+counts toward the quorum queue's delivery limit (RabbitMQ 4.3+ does not count
+`basic.nack` with requeue). A defaults to one consumer to preserve delivery order;
+raising concurrency permits events for the same task to be handled out of order.
+
 ## 2. Common conventions
 
 - **`messageId`** is a UUID. The producer creates it once and reuses it on every retry or

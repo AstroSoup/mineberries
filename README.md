@@ -136,6 +136,10 @@ its UTC cron schedule (use `-` to disable it), and `mineberries.outbox.cleanup.r
 to change how long sent rows are kept (default `7d`). Cleanup commits at most 1,000
 deletions per transaction and never removes unsent rows.
 
+Service A's `events` listener uses one consumer by default. Set
+`mineberries.rabbitmq.events-concurrency` to change the count. Keep it at one
+if events must be handled in delivery order.
+
 ### Initialization and reset
 
 PostgreSQL runs `docker/postgres/init/10-create-service-databases.sh` only when
