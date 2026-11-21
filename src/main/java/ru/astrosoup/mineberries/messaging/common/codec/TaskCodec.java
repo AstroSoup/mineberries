@@ -58,7 +58,15 @@ public final class TaskCodec {
     }
 
     public TaskEvent<Object> decode(Class<?> taskClass, EventDto dto) {
-        TaskMeta meta = registry.require(taskClass);
+        return decodeEvent(registry.require(taskClass), dto);
+    }
+
+    /** Decodes an event using the task type stored in the database. */
+    public TaskEvent<Object> decodeEvent(String taskType, EventDto dto) {
+        return decodeEvent(registry.requireType(taskType), dto);
+    }
+
+    private TaskEvent<Object> decodeEvent(TaskMeta meta, EventDto dto) {
         long version = dto.version();
         Map<String, Object> p = dto.payload() == null ? Map.of() : dto.payload();
 

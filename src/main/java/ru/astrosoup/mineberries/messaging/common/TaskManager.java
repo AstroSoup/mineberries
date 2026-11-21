@@ -21,7 +21,9 @@ import ru.astrosoup.mineberries.messaging.common.codec.TaskCodec;
 import ru.astrosoup.mineberries.messaging.common.dtos.EventDto;
 import ru.astrosoup.mineberries.messaging.common.dtos.MessageDto;
 import ru.astrosoup.mineberries.messaging.tasks.NewTask;
+import ru.astrosoup.mineberries.messaging.tasks.TaskRecord;
 import ru.astrosoup.mineberries.messaging.tasks.TaskRepository;
+import ru.astrosoup.mineberries.messaging.tasks.TaskUpdate;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 
@@ -47,7 +49,8 @@ public class TaskManager {
 
     public TaskManager(MessageSender sender, EventSource events, TaskCodec codec,
                        TaskRepository tasks, ObjectMapper mapper, PlatformTransactionManager transactionManager) {
-        this(sender, events, codec, new Persistence(tasks, mapper, mandatoryTransaction(transactionManager)));
+        this(sender, events, codec, new Persistence(tasks, mapper, mandatoryTransaction(transactionManager),
+                new TransactionTemplate(transactionManager)));
     }
 
     private TaskManager(MessageSender sender, EventSource events, TaskCodec codec, Persistence persistence) {
@@ -68,7 +71,7 @@ public class TaskManager {
 
         MessageDto dto = codec.encode(task);
         if (persistence != null) {
-            persistence.transaction().executeWithoutResult(status -> persistAndEnqueue(task, dto));
+            persistence.submissionTransaction().executeWithoutResult(status -> persistAndEnqueue(task, dto));
         } else {
             reserveActive(task);
             try {
@@ -100,6 +103,13 @@ public class TaskManager {
             throw new IllegalStateException("Could not store task " + task.id());
         }
         enqueue(dto);
+        afterCommit(() -> {
+            reserveActive(task);
+            removeWhenFinished(task);
+        });
+    }
+
+    private static void afterCommit(Runnable action) {
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             private final HashSet<Object> laterSavepoints = new HashSet<>();
             private boolean rolledBack;
@@ -111,16 +121,13 @@ public class TaskManager {
 
             @Override
             public void savepointRollback(Object savepoint) {
-                // A rollback to a savepoint created before this submission undoes both inserts.
+                // A rollback to a savepoint created before registration undoes the writes.
                 if (!laterSavepoints.contains(savepoint)) rolledBack = true;
             }
 
             @Override
             public void afterCommit() {
-                if (!rolledBack) {
-                    reserveActive(task);
-                    removeWhenFinished(task);
-                }
+                if (!rolledBack) action.run();
             }
         });
     }
@@ -153,11 +160,16 @@ public class TaskManager {
         return transaction;
     }
 
-    private record Persistence(TaskRepository tasks, ObjectMapper mapper, TransactionTemplate transaction) {}
+    private record Persistence(TaskRepository tasks, ObjectMapper mapper, TransactionTemplate submissionTransaction,
+                               TransactionTemplate eventTransaction) {}
 
-    @SuppressWarnings("unchecked")
     private void onEvent(EventDto dto) {
-        AbstractTask<Object> task = (AbstractTask<Object>) active.get(dto.messageId());
+        if (persistence != null) {
+            persistence.eventTransaction().executeWithoutResult(status -> persistEvent(dto));
+            return;
+        }
+
+        var task = activeTask(dto.messageId());
         if (task == null) {
             log.debug("Event for unknown/finished task {}: {}", dto.messageId(), dto.type());
             return;
@@ -165,8 +177,89 @@ public class TaskManager {
         try {
             task.apply(codec.decode(task.getClass(), dto));
         } catch (RuntimeException e) {
-            log.error("Can't process event {} for task {}", dto.type(), dto.messageId(), e);
+            log.warn("Can't process event {} for task {}", dto.type(), dto.messageId());
             task.failLocally(e);
         }
+    }
+
+    private void persistEvent(EventDto dto) {
+        var task = persistence.tasks().findByIdForUpdate(dto.messageId()).orElse(null);
+        if (task == null) {
+            log.debug("Event for unknown task {}: {}", dto.messageId(), dto.type());
+            return;
+        }
+        if (task.state().isTerminal() || dto.version() <= task.lastEventVersion()) return;
+
+        TaskEvent<Object> event;
+        try {
+            event = codec.decodeEvent(task.type(), dto);
+        } catch (RuntimeException e) {
+            // Preserve local failure semantics without changing durable task state.
+            log.warn("Can't decode event {} for task {}", dto.type(), task.taskId());
+            afterCommit(() -> failActiveTask(task.taskId(), "Could not decode task event"));
+            return;
+        }
+
+        var update = eventUpdate(task, event, dto);
+        if (!persistence.tasks().updateAfterEvent(task.taskId(), update)) {
+            throw new IllegalStateException("Could not update task " + task.taskId());
+        }
+        afterCommit(() -> applyCommittedEvent(task, event));
+    }
+
+    private TaskUpdate eventUpdate(TaskRecord row, TaskEvent<Object> event, EventDto dto) {
+        var state = row.state();
+        String progress = row.progressStage();
+        String bot = row.assignedBot();
+        String result = row.result();
+        String error = row.error();
+        switch (event) {
+            case TaskEvent.Accepted<Object> accepted -> {
+                state = TaskState.ACCEPTED;
+                bot = accepted.bot();
+            }
+            case TaskEvent.Progress<Object> reporting -> progress = reporting.progress().stage();
+            case TaskEvent.Completed<Object> completed -> {
+                state = TaskState.COMPLETED;
+                // Keep the result's wire property names for later reconstruction.
+                result = completed.result() == null ? null : eventJson(dto.payload());
+            }
+            case TaskEvent.Failed<Object> failed -> {
+                state = TaskState.FAILED;
+                error = eventJson(failed.error());
+            }
+            case TaskEvent.Cancelled<Object> ignored -> state = TaskState.CANCELLED;
+            default -> throw new IllegalStateException("Unsupported task event");
+        }
+        return new TaskUpdate(state, event.version(), progress, bot, result, error);
+    }
+
+    private String eventJson(Object payload) {
+        try {
+            return persistence.mapper().writeValueAsString(payload);
+        } catch (JacksonException e) {
+            throw new IllegalStateException("Could not serialize task event data");
+        }
+    }
+
+    private void applyCommittedEvent(TaskRecord prior, TaskEvent<Object> event) {
+        var task = activeTask(prior.taskId());
+        if (task == null) return;
+        try {
+            task.applyCommitted(event, prior.state(), new TaskProgress(prior.progressStage()));
+        } catch (RuntimeException e) {
+            log.warn("Can't notify listeners for task {} at version {}", prior.taskId(), event.version());
+            task.failLocally(new IllegalStateException("Could not notify task listeners"));
+        }
+    }
+
+    private void failActiveTask(UUID id, String message) {
+        var task = activeTask(id);
+        if (task != null) task.failLocally(new IllegalStateException(message));
+    }
+
+    @SuppressWarnings("unchecked")
+    private AbstractTask<Object> activeTask(UUID id) {
+        return (AbstractTask<Object>) active.get(id);
     }
 }

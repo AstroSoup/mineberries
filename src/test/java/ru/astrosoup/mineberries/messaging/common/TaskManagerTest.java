@@ -12,6 +12,7 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import ru.astrosoup.mineberries.messaging.banker.results.PaymentSentResult;
@@ -22,15 +23,26 @@ import ru.astrosoup.mineberries.messaging.common.codec.TaskMetaRegistry;
 import ru.astrosoup.mineberries.messaging.common.exceptions.TaskFailedException;
 import ru.astrosoup.mineberries.messaging.support.Events;
 import ru.astrosoup.mineberries.messaging.support.InMemoryBroker;
+import tools.jackson.databind.ObjectMapper;
 
 class TaskManagerTest {
     private final InMemoryBroker broker = new InMemoryBroker();
-    private final TaskManager manager;
+    private TaskManager manager;
 
-    TaskManagerTest() {
+    @BeforeEach
+    void setUpManager() {
         var results = new ResultMetaRegistry(SCAN_PACKAGES);
         var tasks = new TaskMetaRegistry(results, SCAN_PACKAGES);
-        manager = new TaskManager(broker, broker, new TaskCodec(tasks, results, TaskCodec.defaultMapper()));
+        var mapper = TaskCodec.defaultMapper();
+        manager = createManager(broker, new TaskCodec(tasks, results, mapper), mapper);
+    }
+
+    TaskManager createManager(InMemoryBroker broker, TaskCodec codec, ObjectMapper mapper) {
+        return new TaskManager(broker, broker, codec);
+    }
+
+    <T extends AbstractTask<?>> T submit(T task) {
+        return manager.submit(task);
     }
 
     private static Throwable failureOf(CompletableFuture<?> future) {
@@ -55,7 +67,7 @@ class TaskManagerTest {
     void submitSendsEncodedTaskAndReturnsIt() {
         var task = payment("seller", "900.00");
 
-        assertSame(task, manager.submit(task));
+        assertSame(task, submit(task));
 
         assertEquals(1, broker.sent().size());
         var msg = broker.lastSent();
@@ -69,14 +81,14 @@ class TaskManagerTest {
     @Test
     void submitRejectsUnregisteredTask() {
         var unregistered = new AbstractTask<Void>() {};
-        assertThrows(IllegalArgumentException.class, () -> manager.submit(unregistered));
+        assertThrows(IllegalArgumentException.class, () -> submit(unregistered));
         assertTrue(broker.sent().isEmpty());
     }
 
     @Test
     void submittingTheSameTaskTwiceFails() {
-        var task = manager.submit(payment("seller", "900.00"));
-        assertThrows(IllegalStateException.class, () -> manager.submit(task));
+        var task = submit(payment("seller", "900.00"));
+        assertThrows(IllegalStateException.class, () -> submit(task));
         assertEquals(1, broker.sent().size());
     }
 
@@ -86,11 +98,11 @@ class TaskManagerTest {
         broker.failNextSend(boom);
         var task = payment("seller", "900.00");
 
-        assertSame(boom, assertThrows(IllegalStateException.class, () -> manager.submit(task)));
+        assertSame(boom, assertThrows(IllegalStateException.class, () -> submit(task)));
         assertFalse(task.result().isDone());
         assertTrue(broker.sent().isEmpty());
 
-        assertSame(task, manager.submit(task));
+        assertSame(task, submit(task));
         assertEquals(1, broker.sent().size());
     }
 
@@ -98,7 +110,7 @@ class TaskManagerTest {
 
     @Test
     void acceptedMovesTaskToAccepted() {
-        var task = manager.submit(payment("seller", "900.00"));
+        var task = submit(payment("seller", "900.00"));
         broker.publish(Events.accepted(task.id(), 0, "banker_bot"));
         assertEquals(TaskState.ACCEPTED, task.state());
         assertFalse(task.result().isDone());
@@ -106,7 +118,7 @@ class TaskManagerTest {
 
     @Test
     void progressNotifiesListenersAndUpdatesProgress() {
-        var task = manager.submit(payment("seller", "900.00"));
+        var task = submit(payment("seller", "900.00"));
         var stages = new ArrayList<String>();
         task.onProgress(p -> stages.add(p.stage()));
 
@@ -120,7 +132,7 @@ class TaskManagerTest {
 
     @Test
     void completedDeliversDecodedResult() {
-        var task = manager.submit(payment("seller", "900.00"));
+        var task = submit(payment("seller", "900.00"));
 
         broker.publish(Events.accepted(task.id(), 0, "banker_bot"));
         broker.publish(Events.completed(task.id(), 1, paymentPayload("seller", "900.00")));
@@ -134,7 +146,7 @@ class TaskManagerTest {
 
     @Test
     void completedVoidTaskResolvesToNull() {
-        var task = manager.submit(new PingTask());
+        var task = submit(new PingTask());
         broker.publish(Events.of(task.id(), 0, EventType.COMPLETED, null));
         assertEquals(TaskState.COMPLETED, task.state());
         assertNull(task.result().join());
@@ -142,7 +154,7 @@ class TaskManagerTest {
 
     @Test
     void failedCompletesExceptionallyWithTaskError() {
-        var task = manager.submit(payment("seller", "900.00"));
+        var task = submit(payment("seller", "900.00"));
 
         broker.publish(Events.failed(task.id(), 0, "boom", true, false));
 
@@ -154,7 +166,7 @@ class TaskManagerTest {
 
     @Test
     void failedWithUnknownOutcomeExposesTheFlag() {
-        var task = manager.submit(payment("seller", "900.00"));
+        var task = submit(payment("seller", "900.00"));
 
         broker.publish(Events.failed(task.id(), 0, "payment outcome unknown", false, true));
 
@@ -165,7 +177,7 @@ class TaskManagerTest {
 
     @Test
     void canceledCancelsTheResult() {
-        var task = manager.submit(payment("seller", "900.00"));
+        var task = submit(payment("seller", "900.00"));
 
         broker.publish(Events.canceled(task.id(), 0));
 
@@ -177,7 +189,7 @@ class TaskManagerTest {
 
     @Test
     void duplicateAndOutOfOrderEventsAreIgnored() {
-        var task = manager.submit(payment("seller", "900.00"));
+        var task = submit(payment("seller", "900.00"));
         var stages = new ArrayList<String>();
         task.onProgress(p -> stages.add(p.stage()));
 
@@ -192,7 +204,7 @@ class TaskManagerTest {
 
     @Test
     void eventsAfterTerminalStateAreIgnored() {
-        var task = manager.submit(payment("seller", "900.00"));
+        var task = submit(payment("seller", "900.00"));
         broker.publish(Events.completed(task.id(), 0, paymentPayload("seller", "900.00")));
 
         broker.publish(Events.failed(task.id(), 1, "late", false, false));
@@ -208,7 +220,7 @@ class TaskManagerTest {
 
     @Test
     void undecodableEventFailsTheTask() {
-        var task = manager.submit(payment("seller", "900.00"));
+        var task = submit(payment("seller", "900.00"));
 
         broker.publish(Events.completed(task.id(), 0, Map.of("recipientNickname", "seller"))); // "amount" missing
 
@@ -218,8 +230,8 @@ class TaskManagerTest {
 
     @Test
     void concurrentTasksAreRoutedById() {
-        var a = manager.submit(payment("seller_a", "100.00"));
-        var b = manager.submit(payment("seller_b", "200.00"));
+        var a = submit(payment("seller_a", "100.00"));
+        var b = submit(payment("seller_b", "200.00"));
 
         broker.publish(Events.completed(b.id(), 0, paymentPayload("seller_b", "200.00")));
 

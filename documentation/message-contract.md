@@ -77,6 +77,13 @@ counts toward the quorum queue's delivery limit (RabbitMQ 4.3+ does not count
 `basic.nack` with requeue). A defaults to one consumer to preserve delivery order;
 raising concurrency permits events for the same task to be handled out of order.
 
+For a valid event, A locks the task row and compares the event version against
+the last version it persisted. Unknown tasks, duplicate or older versions, and
+events after a terminal state are acknowledged without changing the task row.
+Accepted changes are saved in the same transaction, even if A has no in-memory
+task for that ID. Local progress listeners and result futures are updated only
+after commit.
+
 ## 2. Common conventions
 
 - **`messageId`** is a UUID. The producer creates it once and reuses it on every retry or

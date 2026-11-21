@@ -84,10 +84,22 @@ public abstract class AbstractTask<R> {
 
     // non-public methods
     synchronized void apply(TaskEvent<R> event) {
-        if (this.state().isTerminal() || event.version() <= this.version) {
-            return; // duplicate
-        }
-        
+        if (canApply(event)) applyNewEvent(event);
+    }
+
+    /** Applies an event with its persisted predecessor, even if earlier commit callbacks lag behind. */
+    synchronized void applyCommitted(TaskEvent<R> event, TaskState priorState, TaskProgress priorProgress) {
+        if (!canApply(event)) return;
+        state.set(priorState);
+        progress = priorProgress;
+        applyNewEvent(event);
+    }
+
+    private boolean canApply(TaskEvent<R> event) {
+        return !state().isTerminal() && event.version() > version;
+    }
+
+    private void applyNewEvent(TaskEvent<R> event) {
         switch(event) {
             case TaskEvent.Accepted<R> a -> state.set(TaskState.ACCEPTED);
             case TaskEvent.Progress<R> p -> {

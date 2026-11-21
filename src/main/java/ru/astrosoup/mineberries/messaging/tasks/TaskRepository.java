@@ -83,9 +83,7 @@ public class TaskRepository {
                 """)
                 .param(1, task.taskId())
                 .param(2, task.type())
-                // Bind without exposing the payload to Spring's parameter TRACE logging.
-                .param(3, (SqlTypeValue) (statement, index, sqlType, typeName) ->
-                        statement.setString(index, task.payload()))
+                .param(3, opaqueText(task.payload()))
                 .param(4, TaskState.NEW.name())
                 .param(5, timestamp(task.expiresAt()))
                 .param(6, timestamp(task.acceptBy()))
@@ -127,10 +125,10 @@ public class TaskRepository {
                 """)
                 .param(1, update.state().name())
                 .param(2, update.lastEventVersion())
-                .param(3, update.progressStage())
-                .param(4, update.assignedBot())
-                .param(5, update.result())
-                .param(6, update.error())
+                .param(3, opaqueText(update.progressStage()))
+                .param(4, opaqueText(update.assignedBot()))
+                .param(5, opaqueText(update.result()))
+                .param(6, opaqueText(update.error()))
                 .param(7, taskId)
                 .update() > 0;
     }
@@ -172,6 +170,11 @@ public class TaskRepository {
                 """)
                 .param(1, taskId)
                 .update() > 0;
+    }
+
+    private static SqlTypeValue opaqueText(String value) {
+        // Bind without exposing task/event data to Spring's parameter TRACE logging.
+        return (statement, index, sqlType, typeName) -> statement.setString(index, value);
     }
 
     private static OffsetDateTime timestamp(Instant instant) {
