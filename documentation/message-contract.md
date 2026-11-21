@@ -66,6 +66,9 @@ still be published. Retries and concurrent batches can arrive out of order. If R
 accepted a message before its confirmation was lost or the database transaction failed,
 a later publish can deliver it again.
 
+Service A retains sent outbox rows for a configurable period (seven days by default).
+Cleanup uses `sent_at`, not creation time, and never deletes unsent rows.
+
 ## 2. Common conventions
 
 - **`messageId`** is a UUID. The producer creates it once and reuses it on every retry or

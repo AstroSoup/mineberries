@@ -131,6 +131,11 @@ Failed rows remain unsent and retry independently. `mineberries.outbox.relay.ret
 `mineberries.outbox.relay.retry-cap` (default `1m`). The actual delay is randomly chosen
 between half the ceiling and the ceiling, with a minimum of 1 ms.
 
+Outbox cleanup runs hourly by default. Set `mineberries.outbox.cleanup.cron` to change
+its UTC cron schedule (use `-` to disable it), and `mineberries.outbox.cleanup.retention`
+to change how long sent rows are kept (default `7d`). Cleanup commits at most 1,000
+deletions per transaction and never removes unsent rows.
+
 ### Initialization and reset
 
 PostgreSQL runs `docker/postgres/init/10-create-service-databases.sh` only when
