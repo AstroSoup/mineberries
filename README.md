@@ -140,6 +140,11 @@ Service A's `events` listener uses one consumer by default. Set
 `mineberries.rabbitmq.events-concurrency` to change the count. Keep it at one
 if events must be handled in delivery order.
 
+Service A checks every minute for terminal tasks with no registered continuation.
+`mineberries.messaging.continuation-grace` defaults to `5m` and allows time after
+startup and after a task becomes terminal for its owner to register.
+`mineberries.messaging.continuation-scan-interval` changes the check interval.
+
 ### Initialization and reset
 
 PostgreSQL runs `docker/postgres/init/10-create-service-databases.sh` only when

@@ -167,6 +167,7 @@ public class TaskRepository {
                 SET processed_at = now(),
                     updated_at = now()
                 WHERE task_id = ? AND processed_at IS NULL
+                    AND state IN ('COMPLETED', 'FAILED', 'CANCELLED')
                 """)
                 .param(1, taskId)
                 .update() > 0;

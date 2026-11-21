@@ -366,7 +366,7 @@ class TaskManagerIntegrationTest extends AbstractIntegrationTest {
         assertTrue(repository.markProcessed(processed.id()));
 
         var newEvents = new InMemoryBroker();
-        var restarted = new MessagingConfig().taskManager(outbox, newEvents, codec, repository, mapper, transactionManager);
+        var restarted = new MessagingConfig().taskManager(outbox, newEvents, codec, repository, mapper, transactionManager, "5m");
         assertEquals(Set.of(running.id(), queued.id()), taskIds(restarted.activeTasks()));
         var terminal = restarted.terminalUnprocessedTasks();
         assertEquals(Set.of(completed.id(), failed.id(), cancelled.id()), taskIds(terminal));

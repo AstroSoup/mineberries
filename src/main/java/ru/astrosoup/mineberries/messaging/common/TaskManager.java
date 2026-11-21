@@ -1,6 +1,6 @@
 package ru.astrosoup.mineberries.messaging.common;
 
-import java.util.ArrayList;
+import java.time.Duration;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -12,6 +12,7 @@ import java.util.function.Consumer;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DuplicateKeyException;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -44,41 +45,44 @@ public class TaskManager {
     private final TaskCodec codec;
     private final Persistence persistence;
     private final Map<UUID, AbstractTask<?>> active = new ConcurrentHashMap<>();
-    private final List<AbstractTask<?>> terminalUnprocessed;
+    private final TaskContinuations continuations;
 
     /** Creates a non-persistent manager for in-memory tests. */
     public TaskManager(MessageSender sender, EventSource events, TaskCodec codec) {
-        this(sender, events, codec, null);
+        this(sender, events, codec, null, new TaskContinuations(codec));
     }
 
     public TaskManager(MessageSender sender, EventSource events, TaskCodec codec,
                        TaskRepository tasks, ObjectMapper mapper, PlatformTransactionManager transactionManager) {
-        this(sender, events, codec, new Persistence(tasks, mapper, mandatoryTransaction(transactionManager),
-                new TransactionTemplate(transactionManager)));
+        this(sender, events, codec, tasks, mapper, transactionManager, Duration.ofMinutes(5));
     }
 
-    private TaskManager(MessageSender sender, EventSource events, TaskCodec codec, Persistence persistence) {
+    TaskManager(MessageSender sender, EventSource events, TaskCodec codec,
+                TaskRepository tasks, ObjectMapper mapper, PlatformTransactionManager transactionManager,
+                Duration continuationGrace) {
+        this(sender, events, codec, new Persistence(tasks, mapper, mandatoryTransaction(transactionManager),
+                new TransactionTemplate(transactionManager)),
+                new TaskContinuations(codec, tasks, mapper, transactionManager, continuationGrace));
+    }
+
+    private TaskManager(MessageSender sender, EventSource events, TaskCodec codec, Persistence persistence,
+                        TaskContinuations continuations) {
         this.sender = sender;
         this.codec = codec;
         this.persistence = persistence;
-        this.terminalUnprocessed = persistence == null ? List.of() : rehydrate();
+        this.continuations = continuations;
+        if (persistence != null) rehydrate();
         events.subscribe(this::onEvent);
     }
 
-    private List<AbstractTask<?>> rehydrate() {
+    private void rehydrate() {
         var rehydrator = new TaskRehydrator(codec, persistence.mapper());
         for (var row : persistence.tasks().listActive()) {
-            rehydrateRow(rehydrator, row, task -> {
-                reserveActive(task);
-                removeWhenFinished(task);
-            });
+            rehydrateRow(rehydrator, row, this::activate);
         }
-
-        var terminal = new ArrayList<AbstractTask<?>>();
         for (var row : persistence.tasks().listTerminalUnprocessed()) {
-            rehydrateRow(rehydrator, row, terminal::add);
+            rehydrateRow(rehydrator, row, continuations::retainTerminal);
         }
-        return List.copyOf(terminal);
     }
 
     private void rehydrateRow(TaskRehydrator rehydrator, TaskRecord row, Consumer<AbstractTask<?>> store) {
@@ -98,7 +102,33 @@ public class TaskManager {
     }
 
     List<AbstractTask<?>> terminalUnprocessedTasks() {
-        return terminalUnprocessed;
+        return continuations.terminalTasks();
+    }
+
+    /**
+     * Registers the single owning module's continuation for this exact task class.
+     *
+     * <p>For an active task the continuation is invoked to attach observers such as
+     * progress or result listeners; it must not block waiting for that task to finish.
+     * It is invoked again for terminal handling with an already settled result future.
+     * This also applies to tasks submitted after registration and to unprocessed
+     * terminal tasks recovered at startup.
+     *
+     * <p>Terminal continuations run at least once and must be idempotent. Return
+     * only when processing is finished, and propagate any failure out of this
+     * callback (e.g. join a dependent future so its failure is not hidden).
+     * Successful terminal handling sets {@code processed_at}; failures leave it
+     * unset so the continuation can run again on restart.
+     *
+     * @throws IllegalStateException if this task class already has an owner
+     */
+    public <T extends AbstractTask<?>> void reattach(Class<T> taskClass, Consumer<T> continuation) {
+        continuations.register(taskClass, continuation, this::activeTasks);
+    }
+
+    @Scheduled(fixedDelayString = "${mineberries.messaging.continuation-scan-interval:1m}")
+    void processUnownedTerminalTasks() {
+        continuations.markExpiredUnownedTasks();
     }
 
     /**
@@ -122,6 +152,7 @@ public class TaskManager {
                 throw e;
             }
             removeWhenFinished(task);
+            continuations.attachActive(task);
         }
         return task;
     }
@@ -144,10 +175,7 @@ public class TaskManager {
             throw new IllegalStateException("Could not store task " + task.id());
         }
         enqueue(dto);
-        afterCommit(() -> {
-            reserveActive(task);
-            removeWhenFinished(task);
-        });
+        afterCommit(() -> activate(task));
     }
 
     private static void afterCommit(Runnable action) {
@@ -182,13 +210,22 @@ public class TaskManager {
         }
     }
 
+    private void activate(AbstractTask<?> task) {
+        reserveActive(task);
+        removeWhenFinished(task);
+        continuations.attachActive(task);
+    }
+
     private void reserveActive(AbstractTask<?> task) {
         if (active.putIfAbsent(task.id(), task) != null)
             throw duplicate(task.id());
     }
 
     private void removeWhenFinished(AbstractTask<?> task) {
-        task.result().whenComplete((r, ex) -> active.remove(task.id(), task));
+        task.result().whenComplete((r, ex) -> {
+            active.remove(task.id(), task);
+            continuations.detach(task);
+        });
     }
 
     private static IllegalStateException duplicate(UUID id) {
@@ -221,6 +258,7 @@ public class TaskManager {
             log.warn("Can't process event {} for task {}", dto.type(), dto.messageId());
             task.failLocally(e);
         }
+        if (task.state().isTerminal()) continuations.terminal(task);
     }
 
     private void persistEvent(EventDto dto) {
@@ -245,7 +283,7 @@ public class TaskManager {
         if (!persistence.tasks().updateAfterEvent(task.taskId(), update)) {
             throw new IllegalStateException("Could not update task " + task.taskId());
         }
-        afterCommit(() -> applyCommittedEvent(task, event));
+        afterCommit(() -> applyCommittedEvent(task, event, update.state().isTerminal()));
     }
 
     private TaskUpdate eventUpdate(TaskRecord row, TaskEvent<Object> event, EventDto dto) {
@@ -283,15 +321,19 @@ public class TaskManager {
         }
     }
 
-    private void applyCommittedEvent(TaskRecord prior, TaskEvent<Object> event) {
+    private void applyCommittedEvent(TaskRecord prior, TaskEvent<Object> event, boolean terminal) {
         var task = activeTask(prior.taskId());
-        if (task == null) return;
+        if (task == null) {
+            if (terminal) continuations.storedTerminal(prior.taskId());
+            return;
+        }
         try {
             task.applyCommitted(event, prior.state(), new TaskProgress(prior.progressStage()));
         } catch (RuntimeException e) {
             log.warn("Can't notify listeners for task {} at version {}", prior.taskId(), event.version());
             task.failLocally(new IllegalStateException("Could not notify task listeners"));
         }
+        if (terminal) continuations.terminal(task);
     }
 
     private void failActiveTask(UUID id, String message) {

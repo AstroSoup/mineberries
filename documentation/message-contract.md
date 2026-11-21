@@ -89,6 +89,13 @@ state. It also rebuilds terminal tasks whose continuation has not been marked
 processed, but does not run continuations during loading. Undecodable rows are
 reported by task ID and left unchanged.
 
+Each task type has one continuation owner. The owner registers with `reattach`
+to wire up active tasks and process terminal tasks. Service A records `processed_at`
+only after successful terminal handling; exceptions leave it unset for replay on
+the next startup. Terminal continuations may run more than once and must be
+idempotent. Tasks with no owner are marked processed only after a registration
+grace period, with a warning.
+
 ## 2. Common conventions
 
 - **`messageId`** is a UUID. The producer creates it once and reuses it on every retry or

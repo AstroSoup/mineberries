@@ -36,6 +36,11 @@ public final class TaskCodec {
 
     public boolean supports(Class<?> taskClass) { return registry.find(taskClass).isPresent(); }
 
+    /** Returns the registered identifier used to store tasks of this class. */
+    public String taskType(Class<?> taskClass) {
+        return registry.require(taskClass).type();
+    }
+
     public MessageDto encode(AbstractTask<?> task) {
         TaskMeta meta = registry.require(task.getClass());
         var payload = new LinkedHashMap<String, Object>();

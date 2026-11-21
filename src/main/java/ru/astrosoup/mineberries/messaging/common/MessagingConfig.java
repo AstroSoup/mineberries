@@ -2,6 +2,8 @@ package ru.astrosoup.mineberries.messaging.common;
 
 
 
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.convert.DurationStyle;
 import org.springframework.boot.sql.init.dependency.DependsOnDatabaseInitialization;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -27,7 +29,9 @@ public class MessagingConfig {
 
     @DependsOnDatabaseInitialization
     @Bean TaskManager taskManager(MessageSender sender, EventSource events, TaskCodec codec,
-                                  TaskRepository tasks, ObjectMapper mapper, PlatformTransactionManager transactionManager) {
-        return new TaskManager(sender, events, codec, tasks, mapper, transactionManager);
+                                  TaskRepository tasks, ObjectMapper mapper, PlatformTransactionManager transactionManager,
+                                  @Value("${mineberries.messaging.continuation-grace:5m}") String continuationGrace) {
+        return new TaskManager(sender, events, codec, tasks, mapper, transactionManager,
+                DurationStyle.detectAndParse(continuationGrace));
     }
 }
