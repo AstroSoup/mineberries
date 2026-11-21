@@ -22,11 +22,13 @@ public class OutboxRelayConfiguration {
     OutboxRelay outboxRelay(JdbcClient jdbc, PlatformTransactionManager transactionManager,
                             ConnectionFactory rabbit, TopologyProperties topology, RelayProperties relay) {
         return new OutboxRelay(jdbc, transactionManager, rabbit, topology.tasksQueue(),
-                relay.batchSize(), relay.confirmTimeout());
+                relay.batchSize(), relay.confirmTimeout(), new OutboxRetryBackoff(relay.retryBase(), relay.retryCap()));
     }
 
     @ConfigurationProperties("mineberries.outbox.relay")
     public record RelayProperties(
             @DefaultValue("100") int batchSize,
-            @DefaultValue("5s") Duration confirmTimeout) {}
+            @DefaultValue("5s") Duration confirmTimeout,
+            @DefaultValue("1s") Duration retryBase,
+            @DefaultValue("1m") Duration retryCap) {}
 }

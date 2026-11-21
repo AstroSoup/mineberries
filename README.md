@@ -123,8 +123,13 @@ arguments does not update the queue in place. See the
 
 The Service A outbox relay polls with a fixed delay (`mineberries.outbox.relay.interval`,
 default `1s`). It locks up to `mineberries.outbox.relay.batch-size` rows at a time
-(default `100`) and waits up to `mineberries.outbox.relay.confirm-timeout` for their
-publisher confirms (default `5s`).
+(default `100`) and waits up to `mineberries.outbox.relay.confirm-timeout` for each
+publisher confirm (default `5s`).
+
+Failed rows remain unsent and retry independently. `mineberries.outbox.relay.retry-base`
+(default `1s`) sets the initial retry ceiling, which doubles per failed attempt up to
+`mineberries.outbox.relay.retry-cap` (default `1m`). The actual delay is randomly chosen
+between half the ceiling and the ceiling, with a minimum of 1 ms.
 
 ### Initialization and reset
 

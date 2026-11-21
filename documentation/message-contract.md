@@ -57,12 +57,14 @@ When A submits a task, it stores the new task and enqueues its message in the sa
 business transaction. The task becomes active in memory only after commit. An enqueue
 failure aborts the submission transaction; it is not a `FAILED` event from B.
 
-The relay locks unsent rows in ID order, skipping rows locked by another relay.
-Messages are published in ID order within a batch, but concurrent batches can
-arrive out of order. The relay sets `sent_at` only after the batch is confirmed
-without returns. A failed batch rolls back, leaving its rows unsent; if RabbitMQ
-accepted a message before the database commit failed, a later publish can
-deliver it again.
+The relay locks due, unsent rows in ID order, skipping rows locked by another relay.
+It sets `sent_at` per row only after RabbitMQ confirms that message without returning
+it. A nack, timeout, connection failure, or mandatory return leaves that row unsent.
+The relay increments its `attempts`, records a payload-free `last_error`, and sets
+`next_attempt_at` using capped exponential backoff with jitter. Other due rows can
+still be published. Retries and concurrent batches can arrive out of order. If RabbitMQ
+accepted a message before its confirmation was lost or the database transaction failed,
+a later publish can deliver it again.
 
 ## 2. Common conventions
 
