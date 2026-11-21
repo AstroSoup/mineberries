@@ -106,6 +106,24 @@ class TaskManagerTest {
         assertEquals(1, broker.sent().size());
     }
 
+    @Test
+    void cancellationCanBeRetriedAfterAnEnqueueFailure() {
+        var task = submit(payment("seller", "900.00"));
+        var failure = new IllegalStateException("enqueue failed");
+        broker.failNextSend(failure);
+
+        assertSame(failure, assertThrows(IllegalStateException.class, () -> manager.cancel(task)));
+        assertEquals(1, broker.sent().size());
+        assertFalse(task.result().isDone());
+
+        var result = manager.cancel(task);
+        manager.cancel(task);
+        assertEquals(2, broker.sent().size());
+        assertEquals(task.id(), broker.lastSent().messageId());
+        assertEquals("cancel", broker.lastSent().kind());
+        assertFalse(result.isDone());
+    }
+
     // ---- lifecycle ----
 
     @Test

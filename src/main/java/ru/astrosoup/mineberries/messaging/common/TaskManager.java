@@ -4,7 +4,9 @@ import java.time.Duration;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
@@ -40,11 +42,13 @@ import tools.jackson.databind.ObjectMapper;
  */
 @Slf4j
 public class TaskManager {
+    private static final int CANCEL_SCHEMA_VERSION = 1;
 
     private final MessageSender sender;
     private final TaskCodec codec;
     private final Persistence persistence;
     private final Map<UUID, AbstractTask<?>> active = new ConcurrentHashMap<>();
+    private final Set<UUID> localCancelRequests = ConcurrentHashMap.newKeySet();
     private final TaskContinuations continuations;
 
     /** Creates a non-persistent manager for in-memory tests. */
@@ -146,7 +150,7 @@ public class TaskManager {
         } else {
             reserveActive(task);
             try {
-                enqueue(dto);
+                awaitEnqueue(sender.send(dto));
             } catch (RuntimeException | Error e) {
                 active.remove(task.id(), task);
                 throw e;
@@ -155,6 +159,44 @@ public class TaskManager {
             continuations.attachActive(task);
         }
         return task;
+    }
+
+    /**
+     * Requests cancellation and returns the task's result future. For a durable
+     * task the request and outbox message are written in one transaction, joining
+     * the caller's transaction if present. Repeated requests, terminal tasks, and
+     * tasks that have not been submitted do not enqueue a message.
+     *
+     * <p>Only a terminal event from the bot settles the result; requesting
+     * cancellation does not cancel the future or change the task state.
+     */
+    public <R> CompletableFuture<R> cancel(AbstractTask<R> task) {
+        if (persistence != null) {
+            persistence.taskTransaction().executeWithoutResult(status -> {
+                if (persistence.tasks().requestCancellation(task.id())) enqueueCancel(task.id());
+            });
+        } else {
+            requestLocalCancellation(task.id());
+        }
+        return task.result();
+    }
+
+    private void requestLocalCancellation(UUID id) {
+        var task = active.get(id);
+        if (task == null) return;
+        synchronized (task) {
+            if (task.state().isTerminal() || !localCancelRequests.add(id)) return;
+            try {
+                enqueueCancel(id);
+            } catch (RuntimeException | Error e) {
+                localCancelRequests.remove(id);
+                throw e;
+            }
+        }
+    }
+
+    private void enqueueCancel(UUID id) {
+        awaitEnqueue(sender.sendCancel(id, CANCEL_SCHEMA_VERSION));
     }
 
     private void persistAndEnqueue(AbstractTask<?> task, MessageDto dto) {
@@ -174,7 +216,7 @@ public class TaskManager {
             // Database errors can contain the payload.
             throw new IllegalStateException("Could not store task " + task.id());
         }
-        enqueue(dto);
+        awaitEnqueue(sender.send(dto));
         afterCommit(() -> activate(task));
     }
 
@@ -201,9 +243,9 @@ public class TaskManager {
         });
     }
     
-    private void enqueue(MessageDto dto) {
+    private static void awaitEnqueue(CompletableFuture<Void> accepted) {
         try {
-            sender.send(dto).join();
+            accepted.join();
         } catch (CompletionException e) {
             if (e.getCause() instanceof RuntimeException cause) throw cause;
             throw e;
@@ -223,7 +265,9 @@ public class TaskManager {
 
     private void removeWhenFinished(AbstractTask<?> task) {
         task.result().whenComplete((r, ex) -> {
-            active.remove(task.id(), task);
+            if (active.remove(task.id(), task) && persistence == null) {
+                localCancelRequests.remove(task.id());
+            }
             continuations.detach(task);
         });
     }
@@ -239,11 +283,11 @@ public class TaskManager {
     }
 
     private record Persistence(TaskRepository tasks, ObjectMapper mapper, TransactionTemplate submissionTransaction,
-                               TransactionTemplate eventTransaction) {}
+                                TransactionTemplate taskTransaction) {}
 
     private void onEvent(EventDto dto) {
         if (persistence != null) {
-            persistence.eventTransaction().executeWithoutResult(status -> persistEvent(dto));
+            persistence.taskTransaction().executeWithoutResult(status -> persistEvent(dto));
             return;
         }
 

@@ -105,6 +105,22 @@ public class TaskRepository {
     }
 
     /**
+     * Records the first cancel request for a non-terminal task. The guarded write
+     * locks the row until the caller commits or rolls back.
+     *
+     * @return {@code true} if the caller must enqueue a cancel message
+     */
+    public boolean requestCancellation(UUID taskId) {
+        return jdbc.sql("""
+                UPDATE task
+                SET cancel_requested_at = statement_timestamp(), updated_at = statement_timestamp()
+                WHERE task_id = ? AND cancel_requested_at IS NULL AND state IN ('NEW', 'ACCEPTED')
+                """)
+                .param(taskId)
+                .update() > 0;
+    }
+
+    /**
      * Applies the state produced by an event.
      *
      * @param taskId task id

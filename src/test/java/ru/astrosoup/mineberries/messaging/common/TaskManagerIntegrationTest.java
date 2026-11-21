@@ -24,6 +24,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -432,6 +434,112 @@ class TaskManagerIntegrationTest extends AbstractIntegrationTest {
         assertFalse(output.getAll().contains(marker));
         assertEquals(originalInvalid, stored(invalid));
         assertEquals(originalUnknown, stored(unknown));
+    }
+
+    @Nested
+    class Cancellation {
+        @ParameterizedTest
+        @EnumSource(value = TaskState.class, names = {"NEW", "ACCEPTED"})
+        void requestsCancellationWithoutChangingStateUntilTheBotResponds(TaskState initialState) {
+            var task = transaction.execute(status -> manager.submit(payment(id)));
+            if (initialState == TaskState.ACCEPTED) {
+                events.publish(Events.accepted(id, 0, "banker_bot"));
+            }
+            var before = stored(id);
+            var result = task.result();
+
+            var cancelled = manager.cancel(task);
+
+            var requested = stored(id);
+            assertNotNull(requested.cancelRequestedAt());
+            assertEquals(initialState, requested.state());
+            assertEquals(before.lastEventVersion(), requested.lastEventVersion());
+            assertEquals(before.assignedBot(), requested.assignedBot());
+            assertEquals(initialState, task.state());
+            assertFalse(cancelled.isDone());
+            assertFalse(result.isDone());
+            assertCancelMessage();
+
+            events.publish(Events.canceled(id, before.lastEventVersion() + 1));
+            assertEquals(TaskState.CANCELLED, task.state());
+            assertEquals(TaskState.CANCELLED, stored(id).state());
+            assertInstanceOf(CancellationException.class,
+                    assertThrows(CompletionException.class, cancelled::join).getCause());
+            assertTrue(result.isCompletedExceptionally());
+        }
+
+        @Test
+        void alreadyCompletedTaskKeepsItsResultWithoutEnqueuingAnything() {
+            var task = transaction.execute(status -> manager.submit(payment(id)));
+            events.publish(Events.completed(id, 0, paymentResult()));
+            var completed = stored(id);
+
+            assertEquals(task.result().join(), manager.cancel(task).join());
+            assertEquals(completed, stored(id));
+            assertTrue(cancelMessages().isEmpty());
+        }
+
+        @Test
+        void repeatedCancellationDoesNotEnqueueAnotherMessageEvenAfterRestart() {
+            var task = transaction.execute(status -> manager.submit(payment(id)));
+            manager.cancel(task);
+            var firstRequest = stored(id);
+            manager.cancel(task);
+
+            var restarted = new TaskManager(outbox, new InMemoryBroker(), codec, repository, mapper, transactionManager);
+            restarted.cancel(taskWithId(restarted.activeTasks(), id));
+
+            assertEquals(firstRequest, stored(id));
+            assertCancelMessage();
+        }
+
+        @Test
+        void completionCanWinEvenAfterCancellationWasRequested() {
+            var task = transaction.execute(status -> manager.submit(payment(id)));
+            events.publish(Events.accepted(id, 0, "banker_bot"));
+            var result = manager.cancel(task);
+
+            events.publish(Events.completed(id, 1, paymentResult()));
+            var completed = stored(id);
+            events.publish(Events.canceled(id, 2));
+
+            assertEquals("seller", result.join().recipientNickname());
+            assertEquals(TaskState.COMPLETED, task.state());
+            assertEquals(TaskState.COMPLETED, completed.state());
+            assertNotNull(completed.cancelRequestedAt());
+            assertEquals(completed, stored(id));
+            assertCancelMessage();
+        }
+
+        @Test
+        void rollingBackCancellationLeavesNoMarkerOrCancelMessageAndAllowsRetry() {
+            var task = transaction.execute(status -> manager.submit(payment(id)));
+            transaction.executeWithoutResult(status -> {
+                manager.cancel(task);
+                assertNotNull(stored(id).cancelRequestedAt());
+                assertCancelMessage();
+                status.setRollbackOnly();
+            });
+
+            assertNull(stored(id).cancelRequestedAt());
+            assertTrue(cancelMessages().isEmpty());
+            manager.cancel(task);
+            assertNotNull(stored(id).cancelRequestedAt());
+            assertCancelMessage();
+        }
+
+        private List<String> cancelMessages() {
+            return jdbc.sql("SELECT payload::text FROM outbox WHERE message_id = ? AND kind = 'cancel'")
+                    .param(id).query(String.class).list();
+        }
+
+        private void assertCancelMessage() {
+            var messages = cancelMessages();
+            assertEquals(1, messages.size());
+            assertEquals(mapper.readTree("""
+                    {"messageId":"%s","kind":"cancel","schemaVersion":1}
+                    """.formatted(id)), mapper.readTree(messages.getFirst()));
+        }
     }
 
     @Nested

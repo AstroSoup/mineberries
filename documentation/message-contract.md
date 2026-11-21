@@ -249,8 +249,11 @@ point and emits exactly one terminal event: `CANCELED` if it stopped before a si
 or `FAILED` with `outcomeUnknown=true` and `retryable=false` if it cannot rule out that a
 side effect already happened.
 
-Cancellation may race with completion. The first terminal event that reaches A wins;
-later events for the same task are ignored.
+For a non-terminal task, A records `cancel_requested_at` and enqueues the cancel
+message in the same transaction. A repeated request does not enqueue another
+message. Requesting cancellation does not change the task state or settle its
+result. The first terminal event that reaches A wins, including `COMPLETED` or
+`FAILED` if B finishes first. Later events for that task are ignored.
 
 See [`cancel.courier.deliver_order.json`](schemas/examples/cancel.courier.deliver_order.json).
 
