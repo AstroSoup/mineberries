@@ -9,16 +9,23 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
@@ -34,6 +41,7 @@ import ru.astrosoup.mineberries.messaging.banker.tasks.SendPayment;
 import ru.astrosoup.mineberries.messaging.common.codec.ResultMetaRegistry;
 import ru.astrosoup.mineberries.messaging.common.codec.TaskCodec;
 import ru.astrosoup.mineberries.messaging.common.codec.TaskMetaRegistry;
+import ru.astrosoup.mineberries.messaging.common.exceptions.TaskFailedException;
 import ru.astrosoup.mineberries.messaging.fixtures.MessagingFixtures.ExpiringTask;
 import ru.astrosoup.mineberries.messaging.outbox.OutboxMessageSender;
 import ru.astrosoup.mineberries.messaging.support.Events;
@@ -54,6 +62,7 @@ class TaskManagerIntegrationTest extends AbstractIntegrationTest {
     private DataSourceTransactionManager transactionManager;
     private TransactionTemplate transaction;
     private OutboxMessageSender outbox;
+    private TaskCodec codec;
     private TaskManager manager;
 
     @BeforeEach
@@ -66,7 +75,7 @@ class TaskManagerIntegrationTest extends AbstractIntegrationTest {
         transaction = new TransactionTemplate(transactionManager);
         outbox = new OutboxMessageSender(dataSource, mapper);
         var results = new ResultMetaRegistry(SCAN_PACKAGES);
-        var codec = new TaskCodec(new TaskMetaRegistry(results, SCAN_PACKAGES), results, mapper);
+        codec = new TaskCodec(new TaskMetaRegistry(results, SCAN_PACKAGES), results, mapper);
         manager = new TaskManager(outbox, events, codec, repository, mapper, transactionManager);
     }
 
@@ -338,6 +347,93 @@ class TaskManagerIntegrationTest extends AbstractIntegrationTest {
         assertEquals("seller", mapper.readTree(completed.result()).path("recipientNickname").asString());
     }
 
+    @Test
+    void restartsWithActiveAndUnprocessedTerminalTasksWithoutReplayingEvents() {
+        var running = payment(id);
+        var queued = payment(otherId);
+        var completed = payment(testId());
+        var failed = payment(testId());
+        var cancelled = payment(testId());
+        var processed = payment(testId());
+        transaction.executeWithoutResult(status ->
+                List.of(running, queued, completed, failed, cancelled, processed).forEach(manager::submit));
+        events.publish(Events.accepted(running.id(), 0, "banker_bot"));
+        events.publish(Events.progress(running.id(), 3, "waiting"));
+        events.publish(Events.completed(completed.id(), 0, paymentResult()));
+        events.publish(Events.failed(failed.id(), 0, "Unknown outcome", false, true));
+        events.publish(Events.canceled(cancelled.id(), 0));
+        events.publish(Events.completed(processed.id(), 0, paymentResult()));
+        assertTrue(repository.markProcessed(processed.id()));
+
+        var newEvents = new InMemoryBroker();
+        var restarted = new MessagingConfig().taskManager(outbox, newEvents, codec, repository, mapper, transactionManager);
+        assertEquals(Set.of(running.id(), queued.id()), taskIds(restarted.activeTasks()));
+        var terminal = restarted.terminalUnprocessedTasks();
+        assertEquals(Set.of(completed.id(), failed.id(), cancelled.id()), taskIds(terminal));
+        assertEquals(TaskState.NEW, taskWithId(restarted.activeTasks(), queued.id()).state());
+
+        var recoveredResult = taskWithId(terminal, completed.id());
+        assertEquals(TaskState.COMPLETED, recoveredResult.state());
+        assertTrue(recoveredResult.result().isDone());
+        assertEquals(completed.result().join(), recoveredResult.result().join());
+        var recoveredFailure = assertThrows(CompletionException.class, taskWithId(terminal, failed.id()).result()::join);
+        assertEquals(new TaskError("Unknown outcome", false, true),
+                assertInstanceOf(TaskFailedException.class, recoveredFailure.getCause()).error());
+        var recoveredCancellation = taskWithId(terminal, cancelled.id());
+        assertEquals(TaskState.CANCELLED, recoveredCancellation.state());
+        assertInstanceOf(CancellationException.class,
+                assertThrows(CompletionException.class, recoveredCancellation.result()::join).getCause());
+        assertEquals(taskIds(terminal), repository.listTerminalUnprocessed().stream()
+                .map(TaskRecord::taskId).collect(Collectors.toSet()));
+
+        var live = taskWithId(restarted.activeTasks(), running.id());
+        assertNotSame(running, live);
+        assertEquals(TaskState.ACCEPTED, live.state());
+        assertEquals("waiting", live.progress().stage());
+        var stages = new ArrayList<String>();
+        live.onProgress(progress -> stages.add(progress.stage()));
+        newEvents.publish(Events.progress(id, 2, "stale"));
+        newEvents.publish(Events.progress(id, 3, "duplicate"));
+        assertEquals("waiting", live.progress().stage());
+        assertTrue(stages.isEmpty());
+        newEvents.publish(Events.progress(id, 4, "confirmed"));
+        assertEquals(List.of("confirmed"), stages);
+        assertEquals("confirmed", stored(id).progressStage());
+        assertFalse(live.result().isDone());
+        newEvents.publish(Events.completed(id, 5, paymentResult()));
+        assertEquals(TaskState.COMPLETED, live.state());
+        assertTrue(live.result().isDone());
+        assertEquals(Set.of(queued.id()), taskIds(restarted.activeTasks()));
+    }
+
+    @Test
+    @ExtendWith(OutputCaptureExtension.class)
+    void skipsAndLogsUndecodableRowsWithoutExposingPayloads(CapturedOutput output) {
+        var invalid = testId();
+        var unknown = testId();
+        var marker = "test-sensitive-value";
+        transaction.executeWithoutResult(status -> {
+            repository.insert(new NewTask(unknown, "unknown.task", "{}", null, null, null));
+            repository.insert(new NewTask(invalid, "banker.send_payment",
+                    "{\"recipientNickname\":\"" + marker + "\"}", null, null, null));
+            manager.submit(payment(id));
+        });
+        var originalInvalid = stored(invalid);
+        var originalUnknown = stored(unknown);
+
+        var restarted = new TaskManager(outbox, new InMemoryBroker(), codec, repository, mapper, transactionManager);
+
+        assertEquals(Set.of(id), taskIds(restarted.activeTasks()));
+        assertTrue(restarted.terminalUnprocessedTasks().isEmpty());
+        for (var skipped : List.of(invalid, unknown)) {
+            assertTrue(output.getAll().lines()
+                    .anyMatch(line -> line.contains("ERROR") && line.contains("Could not rehydrate task " + skipped)));
+        }
+        assertFalse(output.getAll().contains(marker));
+        assertEquals(originalInvalid, stored(invalid));
+        assertEquals(originalUnknown, stored(unknown));
+    }
+
     @Nested
     class ExistingScenarios extends TaskManagerTest {
         @Override
@@ -356,6 +452,20 @@ class TaskManagerIntegrationTest extends AbstractIntegrationTest {
 
     private TaskRecord stored(UUID id) {
         return transaction.execute(status -> repository.findByIdForUpdate(id).orElseThrow());
+    }
+
+    private UUID testId() {
+        var id = UUID.randomUUID();
+        testIds.add(id);
+        return id;
+    }
+
+    private static AbstractTask<?> taskWithId(List<AbstractTask<?>> tasks, UUID id) {
+        return tasks.stream().filter(task -> task.id().equals(id)).findFirst().orElseThrow();
+    }
+
+    private static Set<UUID> taskIds(List<AbstractTask<?>> tasks) {
+        return tasks.stream().map(AbstractTask::id).collect(Collectors.toSet());
     }
 
     private static Map<String, Object> paymentResult() {

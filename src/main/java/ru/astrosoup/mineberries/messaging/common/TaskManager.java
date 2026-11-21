@@ -1,10 +1,13 @@
 package ru.astrosoup.mineberries.messaging.common;
 
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataAccessException;
@@ -41,6 +44,7 @@ public class TaskManager {
     private final TaskCodec codec;
     private final Persistence persistence;
     private final Map<UUID, AbstractTask<?>> active = new ConcurrentHashMap<>();
+    private final List<AbstractTask<?>> terminalUnprocessed;
 
     /** Creates a non-persistent manager for in-memory tests. */
     public TaskManager(MessageSender sender, EventSource events, TaskCodec codec) {
@@ -57,7 +61,44 @@ public class TaskManager {
         this.sender = sender;
         this.codec = codec;
         this.persistence = persistence;
+        this.terminalUnprocessed = persistence == null ? List.of() : rehydrate();
         events.subscribe(this::onEvent);
+    }
+
+    private List<AbstractTask<?>> rehydrate() {
+        var rehydrator = new TaskRehydrator(codec, persistence.mapper());
+        for (var row : persistence.tasks().listActive()) {
+            rehydrateRow(rehydrator, row, task -> {
+                reserveActive(task);
+                removeWhenFinished(task);
+            });
+        }
+
+        var terminal = new ArrayList<AbstractTask<?>>();
+        for (var row : persistence.tasks().listTerminalUnprocessed()) {
+            rehydrateRow(rehydrator, row, terminal::add);
+        }
+        return List.copyOf(terminal);
+    }
+
+    private void rehydrateRow(TaskRehydrator rehydrator, TaskRecord row, Consumer<AbstractTask<?>> store) {
+        AbstractTask<?> task;
+        try {
+            task = rehydrator.restore(row);
+        } catch (RuntimeException e) {
+            // Decoder exceptions can include raw stored values.
+            log.error("Could not rehydrate task {}", row.taskId());
+            return;
+        }
+        store.accept(task);
+    }
+
+    List<AbstractTask<?>> activeTasks() {
+        return List.copyOf(active.values());
+    }
+
+    List<AbstractTask<?>> terminalUnprocessedTasks() {
+        return terminalUnprocessed;
     }
 
     /**

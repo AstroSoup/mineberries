@@ -84,6 +84,11 @@ Accepted changes are saved in the same transaction, even if A has no in-memory
 task for that ID. Local progress listeners and result futures are updated only
 after commit.
 
+At startup, A rebuilds non-terminal tasks from the stored payload and lifecycle
+state. It also rebuilds terminal tasks whose continuation has not been marked
+processed, but does not run continuations during loading. Undecodable rows are
+reported by task ID and left unchanged.
+
 ## 2. Common conventions
 
 - **`messageId`** is a UUID. The producer creates it once and reuses it on every retry or

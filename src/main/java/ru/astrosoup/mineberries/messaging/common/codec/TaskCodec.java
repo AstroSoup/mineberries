@@ -66,6 +66,11 @@ public final class TaskCodec {
         return decodeEvent(registry.requireType(taskType), dto);
     }
 
+    /** Decodes the stored COMPLETED result without replaying an event. */
+    public Object decodeResult(String taskType, Map<String, Object> payload) {
+        return decodeResult(registry.requireType(taskType), payload);
+    }
+
     private TaskEvent<Object> decodeEvent(TaskMeta meta, EventDto dto) {
         long version = dto.version();
         Map<String, Object> p = dto.payload() == null ? Map.of() : dto.payload();

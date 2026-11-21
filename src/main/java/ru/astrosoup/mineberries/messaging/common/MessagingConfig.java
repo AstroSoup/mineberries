@@ -2,6 +2,7 @@ package ru.astrosoup.mineberries.messaging.common;
 
 
 
+import org.springframework.boot.sql.init.dependency.DependsOnDatabaseInitialization;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -24,6 +25,7 @@ public class MessagingConfig {
 
 
 
+    @DependsOnDatabaseInitialization
     @Bean TaskManager taskManager(MessageSender sender, EventSource events, TaskCodec codec,
                                   TaskRepository tasks, ObjectMapper mapper, PlatformTransactionManager transactionManager) {
         return new TaskManager(sender, events, codec, tasks, mapper, transactionManager);
