@@ -41,6 +41,12 @@ Outgoing messages are written to a transactional outbox and published with publi
 confirms. A broker rejection therefore does not lose a committed task, and the same
 `messageId` survives every publish retry.
 
+Service A's relay publishes to the configured `tasks` queue through the default
+exchange with the AMQP mandatory flag and persistent delivery mode. It copies the
+task UUID to the AMQP `messageId` property and the stored `kind` and `type` to the
+headers. The body is the complete JSON envelope; for a cancel the `type` header
+is `cancel`, but the body still has no `type` field.
+
 Service A writes the complete wire message to `outbox.payload` in the caller's database
 transaction. The `message_id`, `kind`, and `type` columns are separate row metadata.
 Cancel rows use `cancel` as their stored `type`; the cancel JSON still has no `type`
@@ -50,6 +56,13 @@ RabbitMQ confirms publication.
 When A submits a task, it stores the new task and enqueues its message in the same
 business transaction. The task becomes active in memory only after commit. An enqueue
 failure aborts the submission transaction; it is not a `FAILED` event from B.
+
+The relay locks unsent rows in ID order, skipping rows locked by another relay.
+Messages are published in ID order within a batch, but concurrent batches can
+arrive out of order. The relay sets `sent_at` only after the batch is confirmed
+without returns. A failed batch rolls back, leaving its rows unsent; if RabbitMQ
+accepted a message before the database commit failed, a later publish can
+deliver it again.
 
 ## 2. Common conventions
 

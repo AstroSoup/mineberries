@@ -121,6 +121,11 @@ arguments on an existing queue, coordinate a queue migration; restarting with di
 arguments does not update the queue in place. See the
 [message contract](documentation/message-contract.md#1-transport) for declaration details.
 
+The Service A outbox relay polls with a fixed delay (`mineberries.outbox.relay.interval`,
+default `1s`). It locks up to `mineberries.outbox.relay.batch-size` rows at a time
+(default `100`) and waits up to `mineberries.outbox.relay.confirm-timeout` for their
+publisher confirms (default `5s`).
+
 ### Initialization and reset
 
 PostgreSQL runs `docker/postgres/init/10-create-service-databases.sh` only when
