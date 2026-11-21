@@ -3,6 +3,9 @@ package ru.astrosoup.mineberries.messaging.rabbitmq;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.AdditionalAnswers.delegatesTo;
+import static org.mockito.ArgumentMatchers.startsWith;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static ru.astrosoup.mineberries.messaging.fixtures.MessagingFixtures.SCAN_PACKAGES;
@@ -77,7 +80,7 @@ class OutboxRelayIntegrationTest extends AbstractIntegrationTest {
         jdbc = JdbcClient.create(dataSource);
         transactions = new DataSourceTransactionManager(dataSource);
         sender = new OutboxMessageSender(dataSource, mapper);
-        manager = new TaskManager(sender, new InMemoryBroker(), codec, new TaskRepository(jdbc), mapper, transactions);
+        manager = newTaskManager();
     }
 
     @AfterEach
@@ -142,6 +145,58 @@ class OutboxRelayIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void publishesCommittedTasksAfterTheSubmittingProcessDiesBeforeRelay() {
+        contextRunner().withBean(TaskManager.class, this::newTaskManager).run(submittingProcess -> {
+            assertThat(submittingProcess).hasNotFailed();
+            submitTasks(submittingProcess.getBean(TaskManager.class), 2, false);
+            assertEquals(2, storedTaskIds().size());
+            assertEquals(taskIds, unsentTaskIds());
+            assertTrue(drain(submittingProcess.getBean(ConnectionFactory.class)).isEmpty());
+        });
+
+        // A new context and relay recover using only the committed database rows.
+        contextRunner().run(restartedProcess -> {
+            assertThat(restartedProcess).hasNotFailed();
+            var rabbit = restartedProcess.getBean(ConnectionFactory.class);
+            relay(rabbit).relayBatch();
+
+            assertEquals(taskIds, sentTaskIds());
+            assertMessages(expected, drain(rabbit));
+        });
+    }
+
+    @Test
+    void republishesWithTheSameMessageIdAfterCrashingBetweenConfirmAndSentAt() {
+        contextRunner().run(originalProcess -> {
+            assertThat(originalProcess).hasNotFailed();
+            submitTasks(1, false);
+            var rabbit = originalProcess.getBean(ConnectionFactory.class);
+            var crashingJdbc = mock(JdbcClient.class, delegatesTo(jdbc));
+            // Only the post-confirm update is intercepted. The SELECT, transaction and publish are real.
+            doThrow(SimulatedCrash.class).when(crashingJdbc).sql(startsWith("UPDATE outbox SET sent_at"));
+            var crashingRelay = new OutboxRelay(crashingJdbc, transactions, rabbit, tasksQueue, 2,
+                    CONFIRM_TIMEOUT, BACKOFF);
+
+            assertThrows(SimulatedCrash.class, crashingRelay::relayBatch);
+            assertEquals(taskIds, unsentTaskIds());
+            await().atMost(Duration.ofSeconds(5)).until(() -> queuedMessages(rabbit) == 1);
+        });
+
+        contextRunner().run(restartedProcess -> {
+            assertThat(restartedProcess).hasNotFailed();
+            var rabbit = restartedProcess.getBean(ConnectionFactory.class);
+            var recoveredRelay = relay(rabbit);
+            recoveredRelay.relayBatch();
+            assertEquals(taskIds, sentTaskIds());
+            recoveredRelay.relayBatch(); // Once marked sent, no further copy is published.
+
+            var submitted = expected.getFirst();
+            // assertMessages checks the original ID in both AMQP properties and the JSON envelope.
+            assertMessages(List.of(submitted, submitted), drain(rabbit));
+        });
+    }
+
+    @Test
     void retriesAfterRabbitMqStopsAndRecovers() {
         contextRunner().run(context -> {
             assertThat(context).hasNotFailed();
@@ -166,10 +221,36 @@ class OutboxRelayIntegrationTest extends AbstractIntegrationTest {
             }
 
             makeRetriesDue();
-            relay.relayBatch();
+            relay(rabbit).relayBatch();
             assertEquals(taskIds, sentTaskIds());
             assertEquals(List.of(new RetryState(2, null, false), new RetryState(2, null, false)), retryStates());
             assertMessages(expected, drain(rabbit));
+        });
+    }
+
+    @Test
+    void recoveryPublishesCommittedTaskButNotTaskRolledBackAfterSubmit() {
+        contextRunner().run(originalProcess -> {
+            assertThat(originalProcess).hasNotFailed();
+            submitTasks(1, false);
+            new TransactionTemplate(transactions).executeWithoutResult(status -> {
+                submitTasks(1, false);
+                assertEquals(2, storedTaskIds().size());
+                assertEquals(taskIds, unsentTaskIds());
+                status.setRollbackOnly();
+            });
+
+            assertEquals(List.of(taskIds.getFirst()), storedTaskIds());
+            assertEquals(List.of(taskIds.getFirst()), unsentTaskIds());
+        });
+
+        contextRunner().run(restartedProcess -> {
+            assertThat(restartedProcess).hasNotFailed();
+            var rabbit = restartedProcess.getBean(ConnectionFactory.class);
+            relay(rabbit).relayBatch();
+
+            assertEquals(List.of(taskIds.getFirst()), sentTaskIds());
+            assertMessages(List.of(expected.getFirst()), drain(rabbit));
         });
     }
 
@@ -268,12 +349,20 @@ class OutboxRelayIntegrationTest extends AbstractIntegrationTest {
         return new OutboxRelay(jdbc, transactions, rabbit, tasksQueue, 2, CONFIRM_TIMEOUT, BACKOFF);
     }
 
+    private TaskManager newTaskManager() {
+        return new TaskManager(sender, new InMemoryBroker(), codec, new TaskRepository(jdbc), mapper, transactions);
+    }
+
     private void submitTasks(int count, boolean includeCancel) {
+        submitTasks(manager, count, includeCancel);
+    }
+
+    private void submitTasks(TaskManager taskManager, int count, boolean includeCancel) {
         new TransactionTemplate(transactions).executeWithoutResult(status -> {
             for (int i = 1; i <= count; i++) {
                 var task = new SendPayment("seller_" + i, BigDecimal.valueOf(i));
                 taskIds.add(task.id());
-                manager.submit(task);
+                taskManager.submit(task);
                 expected.add(codec.encode(task));
             }
             if (includeCancel) {
@@ -282,6 +371,19 @@ class OutboxRelayIntegrationTest extends AbstractIntegrationTest {
                 expected.add(new MessageDto(id, "cancel", null, 1, null, null));
             }
         });
+    }
+
+    private List<UUID> storedTaskIds() {
+        return jdbc.sql("SELECT task_id FROM task WHERE task_id IN (:ids)")
+                .param("ids", taskIds).query(UUID.class).list();
+    }
+
+    private List<UUID> unsentTaskIds() {
+        return jdbc.sql("""
+                SELECT message_id FROM outbox
+                WHERE message_id IN (:ids) AND sent_at IS NULL
+                ORDER BY id
+                """).param("ids", taskIds).query(UUID.class).list();
     }
 
     private List<UUID> sentTaskIds() {
@@ -315,6 +417,14 @@ class OutboxRelayIntegrationTest extends AbstractIntegrationTest {
     }
 
     private record RetryState(int attempts, String error, boolean waiting) {}
+
+    private static class SimulatedCrash extends RuntimeException {}
+
+    private int queuedMessages(ConnectionFactory rabbit) throws Exception {
+        try (var connection = rabbit.createConnection(); var channel = connection.getDelegate().openChannel().orElseThrow()) {
+            return channel.queueDeclarePassive(tasksQueue).getMessageCount();
+        }
+    }
 
     private List<GetResponse> drain(ConnectionFactory rabbit) throws Exception {
         try (var connection = rabbit.createConnection(); var channel = connection.getDelegate().openChannel().orElseThrow()) {
